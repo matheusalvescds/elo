@@ -1,0 +1,1351 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="description" content="ELO: prova de conceito de acompanhamento medicamentoso acessível. Dados fictícios, sem uso clínico.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ELO">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Protótipo ELO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Atkinson+Hyperlegible+Mono:wght@400;600&family=Lexend:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: app de uma tela — faixa de aviso, barra superior, área rolável e abas inferiores; em telas largas o app fica numa coluna de 440px. Tema claro por padrão, escuro como opção do app. */
+:root{
+  --backdrop:#D9DFE8; --bg:#F3F5F9; --surface:#FFFFFF; --sunk:#E7EBF2; --ink:#131A25; --muted:#545F72; --line:#D2D9E3;
+  --accent:#3337A6; --accent-ink:#FFFFFF; --accent-soft:#E3E4F8;
+  --ok:#14663F; --ok-soft:#DCEFE4; --warn:#7F4C00; --warn-soft:#FBEBD1; --crit:#A3221A; --crit-soft:#F8DEDA;
+  --scrim:rgb(15 20 30 / .45); --shadow:0 1px 2px rgb(16 24 40 / .05), 0 1px 3px rgb(16 24 40 / .07);
+  --f-display:"Lexend", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"Atkinson Hyperlegible Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --bw:1px; --escala:1; --tabh:72px;
+  color-scheme:light;
+}
+:root[data-tema="escuro"]{
+  --backdrop:#05070A; --bg:#0E1218; --surface:#161C25; --sunk:#1F2732; --ink:#E7ECF3; --muted:#9DA9BA; --line:#2B3542;
+  --accent:#A3A6FF; --accent-ink:#0E1218; --accent-soft:#282C57;
+  --ok:#63D49D; --ok-soft:#15301F; --warn:#F2B55C; --warn-soft:#382811; --crit:#FF8D83; --crit-soft:#3B1A18;
+  --scrim:rgb(0 0 0 / .62); --shadow:none;
+  color-scheme:dark;
+}
+html:root.hc{--line:var(--ink); --muted:var(--ink); --sunk:var(--surface); --bg:var(--surface); --bw:2px}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--surface);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;overflow:hidden}
+p{margin:0}
+h1,h2,h3{margin:0}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:8px}
+.muted{color:var(--muted)}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.vis{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ic{flex:none;display:block}
+
+.app{position:relative;height:100%;max-width:440px;margin-inline:auto;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+@media (min-width:600px){
+  body{background:var(--backdrop)}
+  .app{height:calc(100% - 40px);margin-block:20px;border-radius:28px;border:var(--bw) solid var(--line);box-shadow:0 24px 64px rgb(0 0 0 / .2)}
+}
+.poc{flex:none;background:var(--ink);color:var(--surface);font-family:var(--f-mono);font-size:9.5px;letter-spacing:.03em;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:4px max(16px, env(safe-area-inset-right, 0px)) 4px max(16px, env(safe-area-inset-left, 0px))}
+.appbar{flex:none;display:flex;align-items:center;gap:4px;min-height:62px;padding:8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));background:var(--surface);border-bottom:var(--bw) solid var(--line)}
+.appbar .tt{flex:1;min-width:0}
+.appbar h1{font-family:var(--f-display);font-weight:600;font-size:20px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.appbar p{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{flex:none;width:44px;height:44px;border-radius:12px;border:0;background:transparent;color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0}
+.iconbtn:hover{background:var(--sunk)}
+.iconbtn.fill{background:var(--accent);color:var(--accent-ink)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:14px}
+
+.screen{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px max(16px, env(safe-area-inset-right, 0px)) 28px max(16px, env(safe-area-inset-left, 0px));display:flex;flex-direction:column;gap:12px}
+.screen > *{flex-shrink:0}
+.screen.chat > .chatlog{flex:1 1 auto}
+.screen.pac{font-size:calc(16px * var(--escala));line-height:1.5}
+.screen.chat{overflow:hidden;padding-bottom:0;gap:0}
+.screen.onb{gap:16px}
+
+.tabbar{flex:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;background:var(--surface);border-top:var(--bw) solid var(--line);padding:6px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));min-height:var(--tabh)}
+.tab{font:inherit;border:0;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;padding:2px;cursor:pointer;font-size:11.5px;font-weight:700;border-radius:14px;position:relative}
+.tab .pill{width:58px;height:30px;border-radius:15px;display:grid;place-items:center;position:relative}
+.tab[aria-current="page"]{color:var(--ink)}
+.tab[aria-current="page"] .pill{background:var(--accent-soft);color:var(--accent)}
+html.hc .tab[aria-current="page"] .pill{outline:var(--bw) solid var(--ink)}
+.badge{position:absolute;top:-3px;right:6px;min-width:18px;height:18px;border-radius:9px;background:var(--crit);color:var(--surface);font-size:10.5px;display:grid;place-items:center;padding:0 5px;font-family:var(--f-mono)}
+
+.btn{font:inherit;font-weight:700;border:var(--bw) solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:.55em 1em;min-height:48px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.5em;text-align:center;line-height:1.2}
+.btn:hover{border-color:var(--ink)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.sm{min-height:38px;padding:.3em .85em;font-size:13px;border-radius:10px}
+.btn.block{width:100%}
+.pac .btn{min-height:3em;border-radius:.75em}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.sb{justify-content:space-between}
+.row .grow{flex:1 1 auto}
+.stackb{display:grid;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:.35em;font-size:.78em;font-weight:700;padding:.18em .7em;border-radius:999px;background:var(--sunk);color:var(--muted);white-space:nowrap;line-height:1.5}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.crit{background:var(--crit-soft);color:var(--crit)}
+.chip.acc{background:var(--accent-soft);color:var(--accent)}
+html.hc .chip{border:var(--bw) solid currentColor}
+
+.card{background:var(--surface);border:var(--bw) solid var(--line);border-radius:16px;padding:14px 16px;display:grid;gap:10px;box-shadow:var(--shadow);min-width:0}
+.card.flat{box-shadow:none;background:var(--bg)}
+.card.ok{border-color:var(--ok);background:var(--ok-soft)}
+.card.warn{border-color:var(--warn);background:var(--warn-soft)}
+.card.crit{border-color:var(--crit);background:var(--crit-soft)}
+.card.acc{border-color:var(--accent);background:var(--accent-soft)}
+.card h3{font-family:var(--f-display);font-weight:600;font-size:1.05em;line-height:1.25}
+.sec{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:8px 4px -2px}
+.pac .sec{font-size:.72em}
+.sub{color:var(--muted);font-size:.92em}
+.nota{color:var(--muted);font-size:.85em}
+.hora{font-family:var(--f-mono);font-size:1.1em;font-weight:600}
+.rx{display:flex;align-items:baseline;gap:.5em;min-width:0}
+.rx .nm{font-weight:700;font-size:1.08em;min-width:0;overflow-wrap:anywhere}
+.rx .lead{flex:1;min-width:.8em;border-bottom:2px dotted var(--line);transform:translateY(-.3em)}
+.rx .cc{font-family:var(--f-mono);font-weight:600;white-space:nowrap}
+.big{font-family:var(--f-display);font-weight:600;font-size:1.9em;line-height:1.1}
+.segbar{display:flex;gap:4px}
+.segbar i{flex:1;height:10px;border-radius:5px;background:var(--sunk)}
+html.hc .segbar i{border:var(--bw) solid var(--ink)}
+.segbar i.ok{background:var(--ok)}
+.segbar i.warn{background:var(--warn)}
+.acts{display:flex;gap:.5em;flex-wrap:wrap;align-items:center}
+.acts .btn{flex:1 1 7.5em}
+
+/* Lista de ajustes */
+.list{background:var(--surface);border:var(--bw) solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;min-height:3.5em;border-bottom:var(--bw) solid var(--line)}
+.li:last-child{border-bottom:0}
+.li.col{flex-direction:column;align-items:stretch;gap:10px}
+.li .lbl{font-weight:700}
+.li .hint{display:block;font-weight:400;font-size:.85em;color:var(--muted)}
+button.li{width:100%;font:inherit;color:var(--ink);background:transparent;border:0;border-bottom:var(--bw) solid var(--line);text-align:left;cursor:pointer}
+button.li:last-child{border-bottom:0}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);background:var(--sunk);border-radius:12px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;font:inherit;font-weight:700;font-size:.92em;min-height:2.7em;border-radius:9px;color:var(--muted);cursor:pointer;padding:.2em .4em}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+html.hc .seg button[aria-pressed="true"]{outline:var(--bw) solid var(--ink)}
+.switch{flex:none;width:52px;height:32px;border-radius:16px;border:var(--bw) solid var(--line);background:var(--sunk);position:relative;cursor:pointer;padding:0}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgb(0 0 0 / .3);transition:transform .15s}
+.switch[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}
+.switch[aria-checked="true"]::after{transform:translateX(20px);background:var(--accent-ink)}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper .btn{min-width:3.2em;min-height:2.8em;padding:0}
+.stepper .val{flex:1;text-align:center;font-family:var(--f-mono);font-weight:600}
+.preview{border:var(--bw) dashed var(--line);border-radius:12px;padding:.75em .9em;display:grid;gap:.2em}
+input[type="range"]{width:100%;accent-color:var(--accent);min-height:2.6em}
+.campo{display:grid;gap:.3em;font-weight:700;font-size:.92em}
+.campo input,.campo select,.campo textarea{font:inherit;font-weight:400;font-size:1rem;border:var(--bw) solid var(--line);border-radius:12px;padding:.6em .75em;background:var(--surface);color:var(--ink);min-height:3em;width:100%}
+.pac .campo input,.pac .campo textarea{font-size:1em}
+
+/* Boas-vindas */
+.onb-top{display:grid;gap:12px;padding-top:8px}
+.onb-top h2{font-family:var(--f-display);font-weight:600;font-size:1.5em;line-height:1.25;text-wrap:balance}
+.dots{display:flex;gap:6px}
+.dots i{width:22px;height:6px;border-radius:3px;background:var(--sunk)}
+.dots i.on{background:var(--accent)}
+.onb-foot{margin-top:auto;display:grid;gap:8px;padding-top:12px}
+.opcao{font:inherit;text-align:left;display:flex;gap:12px;align-items:center;border:var(--bw) solid var(--line);background:var(--surface);color:var(--ink);border-radius:16px;padding:14px 16px;cursor:pointer;min-height:3.6em;width:100%}
+.opcao[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.opcao strong{display:block}
+.opcao span{color:var(--muted);font-size:.88em}
+
+/* Conferir */
+.hero{font:inherit;text-align:left;display:flex;gap:14px;align-items:center;width:100%;border:0;border-radius:18px;padding:18px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.hero strong{display:block;font-family:var(--f-display);font-weight:600;font-size:1.12em}
+.hero span{font-size:.88em;opacity:.9}
+.hero .ico{width:52px;height:52px;border-radius:14px;background:rgb(255 255 255 / .16);display:grid;place-items:center;flex:none}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tile{font:inherit;text-align:left;border:var(--bw) solid var(--line);background:var(--surface);color:var(--ink);border-radius:16px;padding:14px;display:grid;gap:8px;cursor:pointer;align-content:start;font-weight:700;min-height:6em}
+.tile .ic{color:var(--accent)}
+.galeria{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.galeria button{font:inherit;text-align:left;border:var(--bw) solid var(--line);background:var(--surface);border-radius:14px;padding:8px;cursor:pointer;display:grid;gap:6px;color:var(--ink);align-content:start}
+.galeria small{font-size:.76em;color:var(--muted);line-height:1.3;font-weight:700}
+.upload-thumb{max-width:140px;border-radius:12px;border:var(--bw) solid var(--line)}
+
+/* Embalagens simuladas: objetos físicos com cores próprias em qualquer tema */
+.pkgbox{position:relative;width:100%;aspect-ratio:1.55;max-width:100%}
+.pkg{position:absolute;inset:0;border-radius:6px;padding:7px 9px 20px;overflow:hidden;color:#FFFFFF;background:var(--pk,#4E5560);display:flex;flex-direction:column;gap:1px;font-family:var(--f-display);line-height:1.15;box-shadow:0 1px 3px rgb(0 0 0 / .25)}
+.pkg-lab{font-size:7.5px;opacity:.85;font-family:var(--f-mono);letter-spacing:.04em}
+.pkg-nome{font-weight:700;font-size:11.5px;margin-top:3px}
+.pkg-conc{font-size:14px;font-weight:600}
+.pkg-forma{font-size:9px;opacity:.92}
+.tarja{position:absolute;left:0;right:0;bottom:0;background:#C8102E;color:#FFFFFF;font-family:var(--f-mono);font-size:7px;letter-spacing:.05em;text-align:center;padding:3px 2px}
+.baixa{filter:blur(2.4px)}
+.pkg.desfoque > *{filter:blur(2.1px)}
+.pkg.reflexo::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 58% 42%, rgb(255 255 255 / .95), rgb(255 255 255 / .6) 34%, transparent 66%)}
+.pkg.inclinada{transform:rotate(-7deg) scale(.88)}
+.pkg.cortada{clip-path:inset(0 34% 0 0)}
+.pkg.blister{background:#C7CCD4;color:#1A212C;box-shadow:inset 0 0 0 2px #AEB5BF}
+.pkg.verso{background:#C7CCD4;color:#1A212C;justify-content:center;gap:4px;font-family:var(--f-mono);font-size:9.5px;padding:10px}
+.pkg.duo1{inset:0 22% 18% 0}
+.pkg.duo2{inset:20% 0 0 24%;transform:rotate(5deg)}
+
+/* Conversa */
+.chatlog{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px 0 12px;overscroll-behavior:contain}
+.msg{max-width:88%;padding:.6em .85em;border-radius:1.1em;line-height:1.45;overflow-wrap:anywhere}
+.msg.elo{background:var(--surface);border:var(--bw) solid var(--line);align-self:flex-start;border-bottom-left-radius:.3em}
+.msg.voce{background:var(--accent);color:var(--accent-ink);align-self:flex-end;border-bottom-right-radius:.3em}
+.msg .acoes{display:flex;flex-wrap:wrap;gap:.4em;margin-top:.6em}
+.msg .acoes .btn{min-height:2.6em;font-size:.9em;flex:1 1 auto}
+.msg .orig{display:block;font-size:.72em;opacity:.85;margin-top:.2em}
+.chipsrow{flex:none;display:flex;gap:6px;overflow-x:auto;padding:6px 0 8px;scrollbar-width:none}
+.chipsrow::-webkit-scrollbar{display:none}
+.chipsrow .btn{white-space:nowrap;flex:none;min-height:2.5em;font-size:.85em;font-weight:400;border-radius:999px;padding:.3em .9em}
+.composer{flex:none;display:flex;gap:6px;align-items:center;padding:8px 0 12px;border-top:var(--bw) solid var(--line)}
+.composer input{flex:1;min-width:0;font:inherit;font-size:1em;border:var(--bw) solid var(--line);border-radius:999px;padding:.6em 1em;background:var(--surface);color:var(--ink);min-height:2.9em}
+.composer .iconbtn{width:2.9em;height:2.9em;border-radius:50%;border:var(--bw) solid var(--line);background:var(--surface)}
+.composer .iconbtn.fill{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}
+
+/* Sheets */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:30}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:31;background:var(--surface);border-radius:24px 24px 0 0;max-height:90%;overflow-y:auto;overscroll-behavior:contain;padding:6px max(16px, env(safe-area-inset-right, 0px)) 22px max(16px, env(safe-area-inset-left, 0px));box-shadow:0 -10px 40px rgb(0 0 0 / .22);display:grid;gap:14px;animation:sobe .22s ease-out}
+.sheet.pac{font-size:calc(16px * var(--escala))}
+.grab{width:42px;height:5px;border-radius:3px;background:var(--line);margin:6px auto 0}
+.sh{display:flex;align-items:center;gap:8px}
+.sh h2{flex:1;font-family:var(--f-display);font-weight:600;font-size:1.25em;line-height:1.25}
+.status-ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center}
+.status-ic.ok{background:var(--ok-soft);color:var(--ok)}
+.status-ic.warn{background:var(--warn-soft);color:var(--warn)}
+.status-ic.crit{background:var(--crit-soft);color:var(--crit)}
+.perfil-op{font:inherit;text-align:left;display:flex;gap:12px;align-items:center;width:100%;border:var(--bw) solid var(--line);background:var(--surface);color:var(--ink);border-radius:16px;padding:12px 14px;cursor:pointer}
+.perfil-op[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.perfil-op strong{display:block}
+.perfil-op span{font-size:13px;color:var(--muted)}
+@keyframes sobe{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+
+/* Farmacêutico e pesquisa */
+.meta{font-size:12.5px;color:var(--muted)}
+.rxlist{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.rxlist li{display:grid;gap:3px;padding-bottom:12px;border-bottom:var(--bw) dashed var(--line)}
+.rxlist li:last-child{border-bottom:0;padding-bottom:0}
+.vazio{color:var(--muted);font-size:14px;text-align:center;padding:28px 8px}
+.draft{display:grid;gap:12px}
+.dfs{border:var(--bw) solid var(--line);border-radius:14px;padding:12px;display:grid;gap:10px;min-width:0;background:var(--surface)}
+.dfs legend{font-weight:700;font-size:13px;padding:0 4px}
+.draft label{display:grid;gap:4px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.draft input,.draft select,.draft textarea,.sheet textarea{font:inherit;font-weight:400;font-size:16px;color:var(--ink);background:var(--surface);border:var(--bw) solid var(--line);border-radius:10px;padding:9px 11px;min-height:44px;width:100%}
+.dconc{display:flex;gap:6px}
+.dconc input{flex:1;min-width:0}
+.dconc select{width:auto}
+.erros{color:var(--crit);font-size:13px;font-weight:700}
+.erros:empty{display:none}
+.aviso{border:var(--bw) solid var(--warn);background:var(--warn-soft);border-radius:14px;padding:12px 14px;font-size:13.5px;display:grid;gap:4px}
+.mrow{display:grid;grid-template-columns:22px minmax(0,1fr) 52px;align-items:center;gap:8px;font-size:13px}
+.mk{font-family:var(--f-mono);font-weight:600;color:var(--muted)}
+.track{display:block;height:8px;border-radius:4px;background:var(--sunk);position:relative;overflow:hidden}
+.track b{position:absolute;inset:0 auto 0 0;background:var(--muted);border-radius:4px}
+.mrow.c .track b{background:var(--accent)}
+.mrow.c .mk{color:var(--accent)}
+.mrow .num{text-align:right}
+.sense{display:block;font-size:12px;color:var(--muted)}
+.res{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;padding:2px 8px;border-radius:6px;font-weight:700}
+.res.ok{background:var(--ok-soft);color:var(--ok)}
+.res.no{background:var(--crit-soft);color:var(--crit)}
+.resrow{display:flex;align-items:center;gap:8px}
+.filtros{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;flex:none}
+.filtros::-webkit-scrollbar{display:none}
+.filtros .btn{flex:none;white-space:nowrap}
+.filtros .btn[aria-pressed="true"],.row .btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-weight:700;color:var(--muted);font-size:11px;letter-spacing:.04em;border-bottom:var(--bw) solid var(--line);padding:7px 6px;white-space:nowrap}
+td{padding:7px 6px;border-bottom:var(--bw) solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+.mat td,.mat th{text-align:center}
+.mat td:first-child,.mat th:first-child{text-align:left;white-space:nowrap}
+.mat td.diag{font-weight:700;color:var(--ok)}
+.mat td.off{color:var(--crit);font-weight:700}
+.mat td.z{color:var(--line)}
+.legenda{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 12px;font-size:12px;color:var(--muted)}
+.copiado{width:100%;min-height:120px;font-family:var(--f-mono);font-size:12px;background:var(--surface);color:var(--ink);border:var(--bw) solid var(--line);border-radius:10px;padding:8px}
+ul.lista{margin:0;padding-left:1.2em;display:grid;gap:4px}
+details > summary{cursor:pointer;font-weight:700;min-height:40px;display:flex;align-items:center}
+
+.toast{position:absolute;left:16px;right:16px;bottom:calc(var(--tabh) + 12px);background:var(--ink);color:var(--surface);padding:12px 16px;border-radius:12px;font-weight:700;z-index:40;font-size:14px;text-align:center}
+.app.sem-abas .toast{bottom:16px}
+#parar{position:absolute;right:16px;bottom:calc(var(--tabh) + 12px);z-index:35;box-shadow:0 6px 18px rgb(0 0 0 / .25)}
+
+/* ELO narrando cada tela */
+.guia{display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);border:var(--bw) solid transparent;border-radius:16px;padding:12px 8px 12px 12px;flex:none}
+html.hc .guia{border-color:var(--accent)}
+.elo-av{flex:none;width:2.3em;height:2.3em;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:.78em;letter-spacing:.03em}
+.guia p{flex:1;min-width:0;font-size:.95em;line-height:1.45;padding-top:.15em}
+.guia .iconbtn{width:2.6em;height:2.6em;margin:-6px 0 -6px 0}
+.guia.slim{padding:8px 6px 8px 10px;align-items:center;margin-bottom:8px}
+.guia.slim p{font-size:.86em;padding-top:0}
+.fala-elo{display:flex;gap:10px;align-items:flex-start}
+.fala-elo h2{flex:1}
+/* Fotos de registro */
+.foto-ill{position:relative;width:100%;aspect-ratio:1.55;border-radius:8px;overflow:hidden}
+.bl{position:absolute;inset:0;background:linear-gradient(135deg,#DDE1E7,#B5BCC6);padding:7px 8px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:5px;color:#1A212C;overflow:hidden}
+.bl.escura{filter:brightness(.22) contrast(.8)}
+.bl-txt{font-family:var(--f-display);font-weight:700;font-size:10.5px;letter-spacing:.02em;background:rgb(255 255 255 / .55);border-radius:3px;padding:1px 5px;justify-self:start}
+.bl-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;align-content:center;padding:0 2px;min-height:0}
+.bl-grid i{display:block;width:72%;justify-self:center;align-self:center;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFFFFF,#ECEFF3 55%,#C3C9D2);box-shadow:inset 0 0 0 1px #98A0AB}
+.bl-grid i.oco{background:radial-gradient(circle,#6E757F 0 38%,#A3AAB4 62%,#C3C9D2);box-shadow:inset 0 0 0 1px #5F666F}
+.solto{position:absolute;inset:0;background:radial-gradient(circle at 50% 60%,#3B4350,#1C2128);display:grid;place-items:center}
+.solto i{width:34%;aspect-ratio:2.1;border-radius:999px;background:linear-gradient(180deg,#FFFFFF,#D9DDE3);box-shadow:0 4px 10px rgb(0 0 0 / .5)}
+.thumb{width:100%;max-width:220px;border-radius:12px;border:var(--bw) solid var(--line);display:block}
+.thumb-sm{width:72px;height:72px;object-fit:cover;border-radius:10px;border:var(--bw) solid var(--line);flex:none}
+.msg .thumb{max-width:180px;border-color:transparent}
+.msg .foto-ill{width:180px;max-width:100%}
+.pensando{display:inline-flex;gap:4px;align-items:center}
+.pensando i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:pisca 1.2s infinite}
+.pensando i:nth-child(2){animation-delay:.2s}.pensando i:nth-child(3){animation-delay:.4s}
+@keyframes pisca{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.lido{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:.88em}
+.lido dt{color:var(--muted)}
+.lido dd{margin:0;font-weight:700;overflow-wrap:anywhere}
+.fonte{font-family:var(--f-mono);font-size:.72em;color:var(--muted);letter-spacing:.04em}
+.ia-status{display:flex;gap:8px;align-items:center}
+.ia-status i{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
+.ia-status i.on{background:var(--ok)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="poc" aria-label="Aviso">PROVA DE CONCEITO · DADOS FICTÍCIOS · SEM USO CLÍNICO</div>
+  <header class="appbar" id="appbar"></header>
+  <main class="screen" id="screen"></main>
+  <nav class="tabbar" id="tabbar" aria-label="Seções"></nav>
+  <button id="parar" class="btn pri" data-act="parar-voz" hidden>Parar voz</button>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div class="scrim" id="scrim" data-act="fechar" hidden></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-t" hidden></section>
+  <input id="foto" class="vis" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+</div>
+
+<script>
+
+
+'use strict';
+/* =================== Dados fictícios =================== */
+
+const CONFIG={autoplay:false, limiarLeitura:0.85};
+const clonar=o=>JSON.parse(JSON.stringify(o));
+const PLANO_V1={
+  versao:1, publicadoEm:'2026-10-14T13:20:00.000Z',
+  validadoPor:'Farm. Ana Lima · CRF-PE 00000 (fictício)',
+  origem:'Receita médica conferida no balcão (documento fictício)',
+  vigencia:{inicio:'2026-10-14',fim:'2027-04-14'},
+  motivo:'Cadastro inicial do plano',
+  pessoa:'Maria Aparecida',
+  itens:[
+    {id:'los',nome:'Losartana potássica',conc:{valor:50,unidade:'mg'},forma:'comprimido revestido',posologia:'1 comprimido pela manhã',horarios:['08:00'],apelidos:['remédio da pressão','pressão'],orientacao:'Seu farmacêutico registrou: medicamento para a pressão. Tome no horário combinado.'},
+    {id:'hid',nome:'Hidroclorotiazida',conc:{valor:25,unidade:'mg'},forma:'comprimido',posologia:'1 comprimido pela manhã',horarios:['08:00'],apelidos:['remédio da pressão','pressão','diurético'],orientacao:'Seu farmacêutico registrou: medicamento para a pressão.'},
+    {id:'met',nome:'Cloridrato de metformina',conc:{valor:850,unidade:'mg'},forma:'comprimido',posologia:'1 comprimido no almoço e 1 no jantar',horarios:['12:00','19:00'],apelidos:['remédio do açúcar','açúcar','diabetes','glicose'],orientacao:'Seu farmacêutico registrou: medicamento para o diabetes. Tome junto com a refeição.'},
+    {id:'sin',nome:'Sinvastatina',conc:{valor:20,unidade:'mg'},forma:'comprimido revestido',posologia:'1 comprimido à noite',horarios:['21:00'],apelidos:['colesterol','remédio do colesterol'],orientacao:'Seu farmacêutico registrou: medicamento para o colesterol.'}
+  ]
+};
+const PLANO_V2=(()=>{const p=clonar(PLANO_V1);p.versao=2;p.publicadoEm='2026-10-28T14:00:00.000Z';p.motivo='Nova receita: sinvastatina de 20 mg para 40 mg (fictício)';p.itens.find(i=>i.id==='sin').conc.valor=40;return p;})();
+
+const MSG={
+  inicio:'Oi, Maria. Pode falar comigo do seu jeito, por exemplo “já tomei o remédio da pressão” ou “o que eu tomo hoje?”. Se preferir, use os botões.',
+  acolhe:'Que bom ter você por aqui. Vamos deixar tudo do jeito que fica melhor para você? Pode ler, ouvir ou usar os dois.',
+  letra:'Assim fica melhor de ler? Você pode mudar quando quiser.',
+  voz:'Quer testar minha voz? Você pode falar mais devagar ou usar só a tela.',
+  duvida:'Seu registro não mostra uma confirmação de hoje, mas isso não quer dizer que você não tenha tomado. Vou marcar como dúvida para conferir.',
+  bloqueio:'Não posso orientar mudança, repetição ou compensação de dose. Quem pode ajudar com isso é o seu farmacêutico ou o seu médico. Quer que eu mande essa dúvida para o seu farmacêutico?',
+  naoEntendi:'Não entendi com segurança. Pode dizer de outro jeito, ou tocar em um dos botões abaixo.',
+  falhaImagem:'Não consegui ler essa foto com segurança. Vamos tentar outra, ou prefere pedir ajuda?',
+  divergImagem:'A foto mostra uma informação diferente da que está no seu tratamento. Não vou registrar como conferido. Quer falar com seu farmacêutico?'
+};
+
+/* =================== Utilidades =================== */
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const dataLocal=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const agora=()=>new Date().toISOString();
+const fHora=iso=>new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+const fData=iso=>new Date(iso.length===10?iso+'T12:00:00':iso).toLocaleDateString('pt-BR');
+const fDataHora=iso=>fData(iso)+' '+fHora(iso);
+const minutos=h=>{const [a,b]=h.split(':').map(Number);return a*60+b;};
+const minAgora=()=>{const d=new Date();return d.getHours()*60+d.getMinutes();};
+function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();}
+
+/* =================== Motor ELO (regras determinísticas) =================== */
+const SAIS=['cloridrato','potassica','calcica','sodica','maleato','succinato','besilato','monoidratado'];
+const baseDe=nome=>norm(nome).split(' ').filter(w=>w.length>3&&!SAIS.includes(w));
+const termos=it=>[...new Set([...baseDe(it.nome),norm(it.nome),...it.apelidos.map(norm)])].filter(Boolean);
+const temTermo=(t,tm)=>(' '+t+' ').includes(' '+tm+' ');
+const concTxt=it=>`${it.conc.valor} ${it.conc.unidade}`;
+const nomeComp=it=>`${it.nome} ${concTxt(it)}`;
+const NUM=[['oitocentos e cinquenta','850'],['quinhentos','500'],['vinte e cinco','25'],['cinquenta','50'],['quarenta','40'],['vinte','20'],['cem','100'],['mil','1000']];
+function numeros(t){let s=' '+t+' ';NUM.forEach(([w,n])=>{s=s.split(' '+w+' ').join(' '+n+' ');});return s.trim();}
+function parseConc(s){const m=norm(s).replace(/(\d)\s*(mg|mcg|g)\b/,'$1 $2').match(/(\d+(?:[.,]\d+)?)\s*(mg|mcg|g)?/);return m?{valor:Number(m[1].replace(',','.')),unidade:m[2]||'mg'}:null;}
+
+function resolverItens(t,plano){
+  const mapa=new Map();
+  plano.itens.forEach(it=>termos(it).forEach(tm=>{if(!mapa.has(tm))mapa.set(tm,new Set());mapa.get(tm).add(it.id);}));
+  const achados=[...mapa.entries()].filter(([tm])=>temTermo(t,tm));
+  const certos=new Set();
+  achados.forEach(([,ids])=>{if(ids.size===1)certos.add([...ids][0]);});
+  const amb=new Map();
+  achados.forEach(([tm,ids])=>{const arr=[...ids];const k=arr.sort().join('|');if(arr.length>1&&!arr.some(i=>certos.has(i))&&(!amb.has(k)||amb.get(k).termo.length<tm.length))amb.set(k,{termo:tm,ids:arr});});
+  return {certos:[...certos],ambiguos:[...amb.values()]};
+}
+const RX_DOSE=/(dobr|tomo dois|tomar dois|tomo duas|tomar duas|dois de uma vez|duas de uma vez|dose extra|compens|tomo outro|tomar outro|tomo mais um|tomar mais um|aumentar a dose|diminuir a dose|parar de tomar|posso parar|tomo de novo|tomar de novo|tomo agora os dois|junto os dois)/;
+const RX_HEDGE=/(nao lembro|nao sei se|acho que|sera que|nao tenho certeza|esqueci)/;
+const RX_TOMEI=/\b(tomei|tomado|tomada|bebi)\b/;
+
+function interpretar(texto,plano){
+  const t=numeros(norm(texto));
+  const R=(decisao,x={})=>({decisao,itens:[],opcoes:[],...x});
+  if(/\b(letra|fonte|texto)\b/.test(t)&&/(maior|aument|grande)/.test(t))return R('PREFERENCIA',{pref:{escala:1},msg:'Pronto, aumentei as letras. '+MSG.letra});
+  if(/\b(letra|fonte|texto)\b/.test(t)&&/(menor|diminu|pequen)/.test(t))return R('PREFERENCIA',{pref:{escala:-1},msg:'Pronto, diminuí as letras. '+MSG.letra});
+  if(/contraste/.test(t))return R('PREFERENCIA',{pref:{contraste:!/(normal|tira|desliga|menos)/.test(t)},msg:'Pronto, mudei o contraste. Você pode mudar quando quiser.'});
+  if(/devagar/.test(t))return R('PREFERENCIA',{pref:{vel:-0.2},msg:'Combinado, vou falar mais devagar.'});
+  if(/(mais rapido|mais depressa)/.test(t))return R('PREFERENCIA',{pref:{vel:0.2},msg:'Combinado, vou falar um pouco mais rápido.'});
+  if(/(so a tela|so tela|sem voz|desliga a voz|desligar a voz|nao quero ouvir|para de falar)/.test(t))return R('PREFERENCIA',{pref:{modo:'ler'},msg:'Combinado, vou usar só a tela. Para voltar a ouvir, diga “quero ouvir”.'});
+  if(/(quero ouvir|liga a voz|ligar a voz|pode falar)/.test(t))return R('PREFERENCIA',{pref:{modo:'ambos'},msg:'Combinado, vou ler as respostas em voz alta, além de mostrar na tela.'});
+  if(RX_DOSE.test(t))return R('BLOQUEIA_ENCAMINHA',{msg:MSG.bloqueio});
+  if(/\brepet|^de novo$|fala de novo|o que voce disse/.test(t))return R('REPETE');
+  if(/(farmaceutic|preciso de ajuda|quero ajuda|falar com alguem|atendente)/.test(t))return R('ENCAMINHAR');
+  const {certos,ambiguos}=resolverItens(t,plano);
+  if(RX_HEDGE.test(t))return R('DUVIDA',{itens:certos});
+  if(RX_TOMEI.test(t)){
+    if(ambiguos.length){const ids=[...new Set(ambiguos.flatMap(a=>a.ids))];const rot=plano.itens.flatMap(i=>i.apelidos).find(a=>norm(a)===ambiguos[0].termo)||ambiguos[0].termo;return R('ESCLARECER',{opcoes:ids,msg:`“${rot}” pode ser mais de um remédio do seu tratamento. Qual deles você tomou?`});}
+    if(!certos.length)return R('ESCLARECER',{opcoes:plano.itens.map(i=>i.id),msg:'Não reconheci o nome com segurança. Qual remédio você tomou?'});
+    const nums=(t.match(/\b\d+\b/g)||[]).map(Number).filter(n=>n>=5);
+    if(nums.length){
+      const its=certos.map(id=>plano.itens.find(i=>i.id===id));
+      if(its.length===1&&!nums.includes(its[0].conc.valor))return R('DIVERGENTE',{itens:certos,msg:`Você falou ${nums[0]} mg, mas no seu tratamento ${its[0].nome} é de ${concTxt(its[0])}. Não vou registrar. Quer falar com seu farmacêutico?`});
+      if(its.length>1&&!its.some(i=>nums.includes(i.conc.valor)))return R('ESCLARECER',{opcoes:certos,msg:'O número que você falou não bate com seu tratamento. Qual remédio você tomou?'});
+    }
+    return R('PEDE_CONFIRMACAO',{itens:certos});
+  }
+  if(/serve/.test(t)){
+    if(certos.length===1)return R('ORIENTA',{itens:certos});
+    const ids=certos.length?certos:[...new Set(ambiguos.flatMap(a=>a.ids))];
+    return R('ESCLARECER',{opcoes:ids.length?ids:plano.itens.map(i=>i.id),msg:'Sobre qual remédio você quer saber?'});
+  }
+  if(/(o que|quais|qual).*(tomo|tomar|remedio)|\bhoje\b|horario/.test(t))return R('LISTA');
+  return R('NAO_ENTENDI');
+}
+
+function itemPorNome(nome,plano){const n=norm(nome);return plano.itens.find(it=>baseDe(it.nome).some(b=>temTermo(n,b)));}
+function conferir(l,plano,opts){opts=opts||{};
+  const L=CONFIG.limiarLeitura;
+  if(l.multiplas)return {decisao:'INCONCLUSIVO',motivo:'Há mais de uma embalagem na foto.'};
+  const ok=k=>!!l[k]&&((l.conf||{})[k]??0)>=L;
+  if(!ok('nome'))return {decisao:'INCONCLUSIVO',motivo:'O nome do medicamento não ficou legível.'};
+  const it=itemPorNome(l.nome,plano);
+  if(!it)return {decisao:'DIVERGENTE',motivo:'Este medicamento não está no seu tratamento atual.'};
+  if(!ok('conc'))return {decisao:'INCONCLUSIVO',itemId:it.id,motivo:'A concentração não ficou legível ou não aparece na foto.'};
+  const c=parseConc(l.conc);
+  if(!c||c.valor!==it.conc.valor||c.unidade!==it.conc.unidade)return {decisao:'DIVERGENTE',itemId:it.id,motivo:`Concentração diferente: na foto ${l.conc}, no tratamento ${concTxt(it)}.`};
+  if(opts.formaOpcional&&!ok('forma'))return {decisao:'CONFIRMA',itemId:it.id,motivo:'Nome e concentração conferem com o plano vigente. A forma não aparece escrita na foto.'};
+  if(!ok('forma'))return {decisao:'INCONCLUSIVO',itemId:it.id,motivo:'A forma farmacêutica não ficou legível.'};
+  const fOk=opts.formaOpcional?norm(l.forma).split(' ')[0]===norm(it.forma).split(' ')[0]:norm(l.forma)===norm(it.forma);
+  if(!fOk)return {decisao:'DIVERGENTE',itemId:it.id,motivo:`Forma diferente: na foto ${l.forma}, no tratamento ${it.forma}.`};
+  return {decisao:'CONFIRMA',itemId:it.id,motivo:'Nome, concentração e forma conferem com o plano vigente.'};
+}
+
+/* =================== Cenários sintéticos (40) =================== */
+const I=(nome,conc,forma,cn,cc,cf)=>({nome,conc,forma,conf:{nome:cn,conc:cc,forma:cf}});
+const CASOS=[
+  {id:'C01',tipo:'imagem',rotulo:'Caixa nítida',desc:'Losartana potássica 50 mg, boa iluminação',leitura:I('Losartana potássica','50 mg','comprimido revestido',.97,.95,.92),esperado:'CONFIRMA'},
+  {id:'C02',tipo:'imagem',rotulo:'Caixa nítida',desc:'Hidroclorotiazida 25 mg, boa iluminação',leitura:I('Hidroclorotiazida','25 mg','comprimido',.96,.94,.90),esperado:'CONFIRMA'},
+  {id:'C03',tipo:'imagem',rotulo:'Caixa nítida',desc:'Cloridrato de metformina 850 mg',leitura:I('Cloridrato de metformina','850 mg','comprimido',.95,.93,.91),esperado:'CONFIRMA'},
+  {id:'C04',tipo:'imagem',rotulo:'Caixa nítida',desc:'Sinvastatina 20 mg',leitura:I('Sinvastatina','20 mg','comprimido revestido',.98,.96,.90),esperado:'CONFIRMA'},
+  {id:'C05',tipo:'imagem',rotulo:'Texto em caixa alta',desc:'“LOSARTANA POTÁSSICA 50mg”, sem espaço antes da unidade',leitura:I('LOSARTANA POTÁSSICA','50mg','COMPRIMIDO REVESTIDO',.93,.90,.88),esperado:'CONFIRMA'},
+  {id:'C06',tipo:'imagem',rotulo:'Blister',efeito:'blister',desc:'Blister com “Metformina 850 mg”',leitura:I('Metformina','850 mg','comprimido',.90,.89,.87),esperado:'CONFIRMA'},
+  {id:'C07',tipo:'imagem',rotulo:'Foto inclinada',efeito:'inclinada',desc:'Sinvastatina 20 mg fotografada inclinada',leitura:I('Sinvastatina','20 mg','comprimido revestido',.90,.88,.86),esperado:'CONFIRMA'},
+  {id:'C08',tipo:'imagem',rotulo:'Outro laboratório',desc:'Hidroclorotiazida 25 mg de outro fabricante',leitura:I('Hidroclorotiazida','25 mg','comprimido',.94,.92,.90),esperado:'CONFIRMA'},
+  {id:'D01',tipo:'imagem',div:1,rotulo:'Mesma caixa, outra dose',desc:'Losartana potássica 100 mg (plano: 50 mg)',leitura:I('Losartana potássica','100 mg','comprimido revestido',.96,.95,.92),esperado:'DIVERGENTE'},
+  {id:'D02',tipo:'imagem',div:1,rotulo:'Outra concentração',desc:'Cloridrato de metformina 500 mg (plano: 850 mg)',leitura:I('Cloridrato de metformina','500 mg','comprimido',.95,.94,.91),esperado:'DIVERGENTE'},
+  {id:'D03',tipo:'imagem',div:1,rotulo:'Outra concentração',desc:'Hidroclorotiazida 50 mg (plano: 25 mg)',leitura:I('Hidroclorotiazida','50 mg','comprimido',.95,.93,.90),esperado:'DIVERGENTE'},
+  {id:'D04',tipo:'imagem',div:1,rotulo:'Outra concentração',desc:'Sinvastatina 40 mg (plano: 20 mg)',leitura:I('Sinvastatina','40 mg','comprimido revestido',.97,.95,.91),esperado:'DIVERGENTE'},
+  {id:'D05',tipo:'imagem',div:1,rotulo:'Mesma cor, outro remédio',desc:'Atenolol 25 mg, caixa parecida com a da hidroclorotiazida',leitura:I('Atenolol','25 mg','comprimido',.95,.94,.90),esperado:'DIVERGENTE'},
+  {id:'D06',tipo:'imagem',div:1,rotulo:'Outra forma',desc:'Metformina 850 mg de liberação prolongada (plano: comprimido)',leitura:I('Cloridrato de metformina','850 mg','comprimido de liberação prolongada',.95,.93,.90),esperado:'DIVERGENTE'},
+  {id:'D07',tipo:'imagem',div:1,rotulo:'Mesma cor, outro remédio',desc:'Glibenclamida 5 mg, caixa parecida com a da metformina',leitura:I('Glibenclamida','5 mg','comprimido',.94,.92,.90),esperado:'DIVERGENTE'},
+  {id:'D08',tipo:'imagem',div:1,rotulo:'Mesma dose, outro princípio',desc:'Atorvastatina cálcica 20 mg (plano: sinvastatina 20 mg)',leitura:I('Atorvastatina cálcica','20 mg','comprimido revestido',.95,.94,.91),esperado:'DIVERGENTE'},
+  {id:'F01',tipo:'fala',texto:'tomei o remédio da pressão',desc:'Apelido que corresponde a dois itens do plano',esperado:'ESCLARECER'},
+  {id:'F02',tipo:'fala',div:1,texto:'tomei a losartana de cem',desc:'Fala com concentração diferente da cadastrada',esperado:'DIVERGENTE'},
+  {id:'F03',tipo:'fala',texto:'tomei o branquinho',desc:'Descrição visual sem nome reconhecível',esperado:'ESCLARECER'},
+  {id:'F04',tipo:'fala',texto:'acho que já tomei a metformina',desc:'Relato com incerteza',esperado:'DUVIDA'},
+  {id:'F05',tipo:'fala',texto:'tomei metformina oitocentos e cinquenta',desc:'Nome e concentração por extenso, sem ambiguidade',esperado:'PEDE_CONFIRMACAO'},
+  {id:'F06',tipo:'fala',texto:'tomei o do açúcar e o do colesterol',desc:'Dois medicamentos na mesma frase',esperado:'PEDE_CONFIRMACAO'},
+  {id:'F07',tipo:'fala',div:1,texto:'tomei a sinvastatina de quarenta',desc:'Concentração falada diferente da cadastrada',esperado:'DIVERGENTE'},
+  {id:'F08',tipo:'fala',texto:'tomei a hidro',desc:'Transcrição incompleta do nome',esperado:'ESCLARECER'},
+  {id:'I01',tipo:'imagem',rotulo:'Foto desfocada',efeito:'desfoque',desc:'Losartana fora de foco',leitura:I('Losartana potássica','50 mg','comprimido revestido',.41,.38,.30),esperado:'INCONCLUSIVO'},
+  {id:'I02',tipo:'imagem',rotulo:'Concentração cortada',efeito:'cortada',desc:'Sinvastatina com a concentração fora do enquadramento',leitura:I('Sinvastatina',null,'comprimido revestido',.95,0,.90),esperado:'INCONCLUSIVO'},
+  {id:'I03',tipo:'imagem',rotulo:'Número borrado',desc:'Losartana com concentração lida com baixa confiança',leitura:I('Losartana potássica','50 mg','comprimido revestido',.94,.55,.90),esperado:'INCONCLUSIVO'},
+  {id:'I04',tipo:'imagem',rotulo:'Reflexo forte',efeito:'reflexo',desc:'Metformina com reflexo de luz sobre o texto',leitura:I('Cloridrato de metformina','850 mg','comprimido',.52,.40,.35),esperado:'INCONCLUSIVO'},
+  {id:'I05',tipo:'imagem',rotulo:'Nome incompleto',efeito:'cortada',desc:'Apenas “Losart…” legível',leitura:I('Losart','','',.60,0,0),esperado:'INCONCLUSIVO'},
+  {id:'I06',tipo:'imagem',rotulo:'Forma ilegível',desc:'Hidroclorotiazida 25 mg sem a forma farmacêutica legível',leitura:I('Hidroclorotiazida','25 mg',null,.93,.90,0),esperado:'INCONCLUSIVO'},
+  {id:'I07',tipo:'imagem',rotulo:'Verso do blister',efeito:'verso',desc:'Só lote e validade aparecem',leitura:I(null,null,null,0,0,0),esperado:'INCONCLUSIVO'},
+  {id:'I08',tipo:'imagem',rotulo:'Duas caixas',desc:'Losartana 50 mg e atenolol 25 mg na mesma foto',leitura:{multiplas:true,leituras:[I('Losartana potássica','50 mg','comprimido revestido',.94,.92,.90),I('Atenolol','25 mg','comprimido',.92,.90,.88)]},esperado:'INCONCLUSIVO'},
+  {id:'R01',tipo:'lembrete',desc:'Lembrete das 08:00 disparado, sem resposta',esperado:'NAO_REGISTRA'},
+  {id:'R02',tipo:'dispensacao',desc:'Farmacêutico registra retirada de 60 comprimidos de metformina',esperado:'NAO_REGISTRA'},
+  {id:'R03',tipo:'toque',confirmacao:'sim',confirmacaoExplicita:true,desc:'Toque em “Já tomei” na losartana e confirmação “Sim, tomei”',esperado:'REGISTRA'},
+  {id:'R04',tipo:'toque',confirmacao:null,desc:'Toque em “Já tomei” e saída sem confirmar',esperado:'NAO_REGISTRA'},
+  {id:'R05',tipo:'fala',texto:'não lembro se tomei a sinvastatina',desc:'Dúvida sobre tomada',esperado:'DUVIDA'},
+  {id:'R06',tipo:'fala',texto:'esqueci de manhã, tomo dois agora?',desc:'Pedido de compensação de dose',esperado:'BLOQUEIA_ENCAMINHA'},
+  {id:'R07',tipo:'fala',texto:'repete',desc:'Pedido para repetir a última orientação',esperado:'REPETE'},
+  {id:'R08',tipo:'imagem',div:1,plano:'v2',rotulo:'Caixa da receita antiga',desc:'Plano v2 (sinvastatina 40 mg) e foto da caixa antiga de 20 mg',leitura:I('Sinvastatina','20 mg','comprimido revestido',.97,.95,.91),esperado:'DIVERGENTE'}
+];
+const GRUPOS={C:'Correspondências corretas',D:'Divergências embalagem × prescrição',F:'Ambiguidades de fala',I:'Imagens inconclusivas',R:'Rotina e registro'};
+const DEC={CONFIRMA:'Confere',DIVERGENTE:'Divergente',INCONCLUSIVO:'Inconclusivo',ESCLARECER:'Pede esclarecimento',PEDE_CONFIRMACAO:'Pede confirmação',DUVIDA:'Marca dúvida',BLOQUEIA_ENCAMINHA:'Bloqueia e encaminha',REPETE:'Repete',REGISTRA:'Registra tomada',NAO_REGISTRA:'Não registra'};
+
+/* Condições comparativas */
+function falaSemPlano(texto,cond){
+  const t=numeros(norm(texto));
+  if(cond==='B'&&/\brepet/.test(t))return 'REPETE';
+  if(/\btomei\b/.test(t)){const r=resolverItens(t,PLANO_V1);if(r.certos.length||r.ambiguos.length)return 'REGISTRA';}
+  return 'NAO_REGISTRA';
+}
+function conferirB(l){const x=l.multiplas?l.leituras[0]:l;return (x.nome&&x.conf.nome>=CONFIG.limiarLeitura)?'CONFIRMA':'INCONCLUSIVO';}
+function rodar(cond,c){
+  const plano=c.plano==='v2'?PLANO_V2:PLANO_V1;let out;
+  if(c.tipo==='imagem')out=cond==='A'?'CONFIRMA':cond==='B'?conferirB(c.leitura):conferir(c.leitura,plano).decisao;
+  else if(c.tipo==='fala')out=cond==='C'?interpretar(c.texto,plano).decisao:falaSemPlano(c.texto,cond);
+  else if(c.tipo==='toque')out=cond==='C'?(c.confirmacao==='sim'?'REGISTRA':'NAO_REGISTRA'):'REGISTRA';
+  else out='NAO_REGISTRA';
+  const ev=cond==='A'?{ts:1,origem:'autocadastro',tipo:c.tipo}:cond==='B'?{ts:1,origem:c.tipo==='imagem'?'foto':'voz',tipo:c.tipo,estado:out}:{ts:1,origem:c.tipo,tipo:c.tipo,versaoPlano:plano.versao,estado:out};
+  return {out,ev};
+}
+const CAMPOS=['ts','origem','tipo','versaoPlano','estado'];
+const SEGURAS=new Set(['ESCLARECER','INCONCLUSIVO','DUVIDA','BLOQUEIA_ENCAMINHA','DIVERGENTE','PEDE_CONFIRMACAO']);
+function metricas(res,cond){
+  const m={falsa:0,semConf:0,sens:0,nDiv:0,rast:0,conc:0,inc:0,nInc:0,porGrupo:{}};
+  res.forEach(r=>{const c=r.caso,o=r[cond].out,g=c.id[0];
+    if((o==='CONFIRMA'||o==='REGISTRA')&&!['CONFIRMA','REGISTRA','PEDE_CONFIRMACAO'].includes(c.esperado))m.falsa++;
+    if(o==='REGISTRA'&&!c.confirmacaoExplicita)m.semConf++;
+    if(c.div){m.nDiv++;if(o==='DIVERGENTE')m.sens++;}
+    if(CAMPOS.every(k=>r[cond].ev[k]!==undefined))m.rast++;
+    if(o===c.esperado)m.conc++;
+    if(g==='F'||g==='I'||c.id==='R05'||c.id==='R06'){m.nInc++;if(o===c.esperado&&SEGURAS.has(o))m.inc++;}
+    m.porGrupo[g]=(m.porGrupo[g]||0)+(o===c.esperado?1:0);
+  });
+  return m;
+}
+function assinatura(){let h=0x811c9dc5;const s=JSON.stringify(CASOS);for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0;}return h.toString(16).padStart(8,'0');}
+
+
+
+/* =================== Estado =================== */
+const CHAVE='elo-poc-v4';
+function estadoInicial(){
+  const ontem=new Date(Date.now()-864e5),y=dataLocal(ontem);
+  const at=(h,m)=>{const d=new Date(ontem);d.setHours(h,m,0,0);return d.toISOString();};
+  const ex=' (exemplo fictício)';
+  return {
+    prefs:{tema:'claro',modo:'ambos',escala:1,contraste:false,vel:1,narrar:true,acolhido:false,consentFoto:false},
+    ia:{proxy:'',chave:'',modelo:'claude-sonnet-5-5'},
+    planos:[clonar(PLANO_V1)],
+    dispensacoes:['los','hid','met','sin'].map((id,i)=>({id:'d'+i,itemId:id,data:'2026-10-15',qtd:id==='met'?'60 comprimidos':'30 comprimidos',por:'Farm. Ana Lima (fictício)',versaoPlano:1})),
+    eventos:[
+      {id:'s1',ts:at(8,12),tipo:'tomada_relatada',itemId:'los',slot:'los@08:00@'+y,origem:'toque',estado:'confirmado_pela_pessoa',versaoPlano:1,detalhe:'Confirmação explícita'+ex},
+      {id:'s2',ts:at(8,13),tipo:'tomada_relatada',itemId:'hid',slot:'hid@08:00@'+y,origem:'toque',estado:'confirmado_pela_pessoa',versaoPlano:1,detalhe:'Confirmação explícita'+ex},
+      {id:'s3',ts:at(12,41),tipo:'tomada_relatada',itemId:'met',slot:'met@12:00@'+y,origem:'fala_simulada',estado:'confirmado_pela_pessoa',versaoPlano:1,detalhe:'“tomei o do açúcar”, confirmado com “Sim”'+ex},
+      {id:'s4',ts:at(21,34),tipo:'duvida',itemId:'sin',slot:'sin@21:00@'+y,origem:'fala_simulada',estado:'duvida',versaoPlano:1,detalhe:'“não lembro se tomei o do colesterol”'+ex}
+    ],
+    encaminhamentos:[],
+    chat:[{de:'elo',texto:MSG.inicio}]
+  };
+}
+let state;
+try{state=JSON.parse(localStorage.getItem(CHAVE)||'null');}catch(e){state=null;}
+if(!state||!state.planos||!state.prefs)state=estadoInicial();
+state.ia=state.ia||{proxy:'',chave:'',modelo:'claude-sonnet-5-5'};
+if(state.prefs.narrar===undefined)state.prefs.narrar=true;
+function salvar(){try{localStorage.setItem(CHAVE,JSON.stringify(state));}catch(e){try{state.eventos.forEach(e=>{if(e.foto)e.foto.thumb=null;});state.chat.forEach(m=>{if(m.foto)m.foto.thumb=null;});localStorage.setItem(CHAVE,JSON.stringify(state));}catch(_){}}}
+const ui={tab:{paciente:'hoje',farmaceutico:'fila',pesquisa:'resumo'},pilha:[],rota:null,voltando:false,obStep:0,sheet:null,msgSlot:null,conferencia:null,analise:null,fotoCtx:null,draft:null,bancFiltro:'todos',bancCond:'C',res:null,resEm:null,csv:null,resetPerg:false,trilhaFiltro:'atencao',ultimaTela:null};
+
+const planoAtual=()=>state.planos[state.planos.length-1];
+const item=(id,p=planoAtual())=>p.itens.find(i=>i.id===id);
+function logEvento(ev){const e={id:'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),ts:agora(),versaoPlano:planoAtual().versao,itemId:null,slot:null,...ev};state.eventos.push(e);salvar();return e;}
+function slotsHoje(){const p=planoAtual(),d=dataLocal(new Date()),o=[];p.itens.forEach(it=>it.horarios.forEach(h=>o.push({key:`${it.id}@${h}@${d}`,item:it,hora:h})));return o.sort((a,b)=>a.hora.localeCompare(b.hora)||a.item.nome.localeCompare(b.item.nome));}
+function estadoSlot(key){const ev=state.eventos.filter(e=>e.slot===key);const t=ev.filter(e=>e.tipo==='tomada_relatada').pop();if(t)return {tipo:'tomada',ev:t};const d=ev.filter(e=>e.tipo==='duvida').pop();return d?{tipo:'duvida',ev:d}:null;}
+function slotParaItem(id){const s=slotsHoje().filter(x=>x.item.id===id);const livres=s.filter(x=>!estadoSlot(x.key)||estadoSlot(x.key).tipo!=='tomada');const lista=livres.length?livres:s;const n=minAgora();return lista.sort((a,b)=>Math.abs(minutos(a.hora)-n)-Math.abs(minutos(b.hora)-n))[0];}
+function slotPorKey(k){return slotsHoje().find(s=>s.key===k);}
+function registrarTomada(key,origem,detalhe,evidencia){const s=slotPorKey(key);if(!s)return;logEvento({tipo:'tomada_relatada',itemId:s.item.id,slot:key,origem,estado:'confirmado_pela_pessoa',evidencia:evidencia||null,detalhe:detalhe||'Confirmação explícita da pessoa. Não comprova ingestão.'});}
+const eventosAtencaoHoje=()=>{const d=dataLocal(new Date());return state.eventos.filter(e=>['duvida','divergente','bloqueado'].includes(e.estado)&&dataLocal(new Date(e.ts))===d);};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* =================== Voz e avisos =================== */
+const temVoz='speechSynthesis' in window;
+function falar(texto,forcar){
+  if(!texto)return;
+  if(!forcar&&state.prefs.modo==='ler')return;
+  if(!temVoz){if(forcar)aviso('A voz não está disponível neste navegador. O texto continua na tela.');return;}
+  try{const s=window.speechSynthesis;s.cancel();const u=new SpeechSynthesisUtterance(texto);u.lang='pt-BR';u.rate=state.prefs.vel;
+    const v=s.getVoices().find(v=>(v.lang||'').toLowerCase().startsWith('pt'));if(v)u.voice=v;
+    u.onend=u.onerror=()=>{$('#parar').hidden=true;};s.speak(u);$('#parar').hidden=false;
+  }catch(e){$('#parar').hidden=true;}
+}
+function pararVoz(){try{window.speechSynthesis&&window.speechSynthesis.cancel();}catch(e){}$('#parar').hidden=true;}
+let tAviso;function aviso(t){const el=$('#toast');el.textContent=t;el.hidden=false;clearTimeout(tAviso);tAviso=setTimeout(()=>{el.hidden=true;},3000);}
+
+/* =================== Preferências =================== */
+const ESCALAS=[0.9,1,1.15,1.3,1.5,1.75,2];
+function aplicarPrefs(){const r=document.documentElement;r.dataset.tema=state.prefs.tema==='escuro'?'escuro':'claro';r.style.setProperty('--escala',state.prefs.escala);r.classList.toggle('hc',!!state.prefs.contraste);}
+function passoEscala(d){let i=ESCALAS.findIndex(x=>x>=state.prefs.escala-0.001);if(i<0)i=1;i=Math.max(0,Math.min(ESCALAS.length-1,i+d));state.prefs.escala=ESCALAS[i];aplicarPrefs();salvar();}
+function aplicarPref(p){if(p.escala)passoEscala(p.escala);if('contraste' in p)state.prefs.contraste=p.contraste;if(p.tema)state.prefs.tema=p.tema;if(p.vel)state.prefs.vel=Math.max(.6,Math.min(1.6,Math.round((state.prefs.vel+p.vel)*10)/10));if(p.modo){state.prefs.modo=p.modo;if(p.modo==='ler')pararVoz();}aplicarPrefs();salvar();}
+
+/* =================== Rótulos =================== */
+const TIPO={tomada_relatada:'Tomada relatada',duvida:'Dúvida',dispensacao:'Dispensação',prescricao:'Plano publicado',conferencia:'Conferência de embalagem',evidencia_foto:'Foto de registro',encaminhamento:'Encaminhamento',bloqueio:'Pedido fora do escopo',relato:'Relato divergente',lembrete:'Lembrete'};
+const ORIGEM={toque:'Toque',texto:'Texto',fala_simulada:'Fala (simulada)',imagem_simulada:'Imagem (simulada)',foto_aparelho:'Foto do aparelho',farmaceutico:'Farmacêutico',sistema:'Sistema'};
+const ESTADO={confirmado_pela_pessoa:'Confirmado pela pessoa',duvida:'Dúvida',divergente:'Divergente',inconclusivo:'Inconclusivo',correspondente:'Correspondente',registrado:'Registrado',bloqueado:'Bloqueado',enviado:'Enviado'};
+const ESTADO_CHIP={confirmado_pela_pessoa:'ok',correspondente:'ok',duvida:'warn',inconclusivo:'warn',divergente:'crit',bloqueado:'crit',registrado:'acc',enviado:'acc'};
+const DEC_CURTO={CONFIRMA:'Conf',DIVERGENTE:'Div',INCONCLUSIVO:'Inc',ESCLARECER:'Escl',PEDE_CONFIRMACAO:'P.conf',DUVIDA:'Dúv',BLOQUEIA_ENCAMINHA:'Bloq',REPETE:'Rep',REGISTRA:'Reg',NAO_REGISTRA:'N.reg'};
+const GRUPO_CURTO={C:'Correspondência',D:'Divergência',F:'Fala',I:'Inconclusiva',R:'Rotina'};
+const FONTE={claude:'Análise por IA · Claude',proxy:'Análise por IA · Claude via servidor',api:'Análise por IA · Claude via API',simulada:'Exemplo simulado · sem IA',demo:'IA desligada neste aparelho'};
+
+/* =================== Ícones =================== */
+const ICON={
+  hoje:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>',
+  conferir:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  conversar:'<path d="M4 5h16v11H10l-6 4z"/>',
+  ajustes:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  fila:'<path d="M4 13l2-8h12l2 8v6H4z"/><path d="M4 13h5l1 2h4l1-2h5"/>',
+  plano:'<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 9h6M9 13h6M9 17h4"/>',
+  retiradas:'<path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
+  trilha:'<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1.2"/><circle cx="5" cy="12" r="1.2"/><circle cx="5" cy="18" r="1.2"/>',
+  resumo:'<path d="M5 20V11M12 20V4M19 20v-7"/>',
+  casos:'<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 10h16M10 10v9"/>',
+  matriz:'<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>',
+  sobre:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+  sol:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  lua:'<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  som:'<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11"/>',
+  mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  enviar:'<path d="M4 12l16-8-6 16-2.5-6.5z"/>',
+  teclado:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/>',
+  ajuda:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17v.5"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7"/>',
+  alerta:'<path d="M12 3.5l9.5 17h-19z"/><path d="M12 10v4.5M12 17.5v.5"/>',
+  x:'<path d="M6 6l12 12M18 6L6 18"/>',
+  voltar:'<path d="M15 5l-7 7 7 7"/>',
+  camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'
+};
+const ic=(n,s=22)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
+
+/* =================== Embalagens e fotos simuladas =================== */
+const CORES={losartana:'#2E5C8A',hidroclorotiazida:'#3B7558',atenolol:'#3B7558',metformina:'#77406A',glibenclamida:'#77406A',sinvastatina:'#8A5A2E',atorvastatina:'#8A5A2E'};
+function corPkg(n){const t=norm(n);if(!t)return '#4E5560';const k=Object.keys(CORES).find(k=>t.includes(k)||(t.length>=5&&k.startsWith(t.slice(0,5))));return k?CORES[k]:'#4E5560';}
+function pkgUnico(l,ef,extra){
+  if(ef==='verso')return `<div class="pkg verso ${extra||''}"><span>LOTE 24A117</span><span>VAL 08/2027</span><span>FAB 08/2025</span></div>`;
+  const b=k=>((l.conf||{})[k]??0)<CONFIG.limiarLeitura?' baixa':'';
+  return `<div class="pkg ${ef||''} ${extra||''}" style="--pk:${corPkg(l.nome||'')}"><span class="pkg-lab">LABORATÓRIO EXEMPLO</span><span class="pkg-nome${b('nome')}">${esc(l.nome||'')}</span><span class="pkg-conc${b('conc')}">${esc(l.conc||'')}</span><span class="pkg-forma${b('forma')}">${esc(l.forma||'')}</span>${ef==='blister'?'':'<span class="tarja">VENDA SOB PRESCRIÇÃO MÉDICA</span>'}</div>`;
+}
+function pkgHTML(c){const l=c.leitura;return `<div class="pkgbox" aria-hidden="true">${l.multiplas?pkgUnico(l.leituras[0],'','duo1')+pkgUnico(l.leituras[1],'','duo2'):pkgUnico(l,c.efeito)}</div>`;}
+const IA_=(tipo,nome,nc,conc,cc,alv,obs,nova)=>({tipo_imagem:tipo,nome_lido:nome,nome_confianca:nc,concentracao_lida:conc,concentracao_confianca:cc,forma_lida:null,forma_confianca:0,alveolo_vazio_visivel:alv,multiplas_embalagens:false,observacao:obs,pedir_nova_foto:nova});
+const PROVAS=[
+  {id:'P1',rotulo:'Cartela de losartana, 1 espaço vazio',ill:{txt:'LOSARTANA POTÁSSICA 50 mg',vazios:[0]},ia:IA_('blister','Losartana potássica',.94,'50 mg',.92,true,'Vejo uma cartela de losartana potássica 50 mg com um espaço vazio.',false)},
+  {id:'P2',rotulo:'Cartela de metformina, 3 vazios',ill:{txt:'METFORMINA 850 mg',vazios:[0,1,2]},ia:IA_('blister','Metformina',.93,'850 mg',.91,true,'Vejo uma cartela de metformina 850 mg com três espaços vazios.',false)},
+  {id:'P3',rotulo:'Cartela de outro remédio',ill:{txt:'ATENOLOL 25 mg',vazios:[0,1]},ia:IA_('blister','Atenolol',.95,'25 mg',.93,true,'Vejo uma cartela de atenolol 25 mg com dois espaços vazios.',false)},
+  {id:'P4',rotulo:'Foto muito escura',ill:{txt:'LOSARTANA POTÁSSICA 50 mg',vazios:[0],escura:true},ia:IA_('ilegivel',null,.15,null,.1,null,'A foto está escura e não consigo ler o nome nem a dose.',true)},
+  {id:'P5',rotulo:'Comprimido sem embalagem',ill:{solto:true},ia:IA_('comprimido_solto',null,0,null,0,null,'Vejo um comprimido branco, mas sem a embalagem não dá para saber qual é.',true)}
+];
+function ilustracao(p){
+  if(p.ill.solto)return `<div class="foto-ill" aria-hidden="true"><div class="solto"><i></i></div></div>`;
+  return `<div class="foto-ill" aria-hidden="true"><div class="bl${p.ill.escura?' escura':''}"><span class="bl-txt">${esc(p.ill.txt)}</span><div class="bl-grid">${Array.from({length:10},(_,i)=>`<i class="${p.ill.vazios.includes(i)?'oco':''}"></i>`).join('')}</div></div></div>`;
+}
+function fotoHTML(f,cls){if(!f)return '';if(f.ex){const p=PROVAS.find(x=>x.id===f.ex);if(p)return ilustracao(p);const c=CASOS.find(x=>x.id===f.ex);if(c)return pkgHTML(c);}return f.thumb?`<img class="${cls||'thumb'}" src="${f.thumb}" alt="Foto enviada">`:'<span class="meta">Foto não guardada neste aparelho</span>';}
+
+/* =================== Análise de fotos por IA =================== */
+const IA={tipo:null,sample:null};
+async function iniciarIA(){
+  try{
+    if(window.claude&&typeof window.claude.use==='function'){
+      const s=await window.claude.use('sample');
+      if(s){const lim=await s.limits().catch(()=>null);if(lim&&lim.images){IA.tipo='claude';IA.sample=s;}}
+    }
+  }catch(e){}
+  if(ROTA().tab==='ajustes'&&!ui.sheet)render();
+}
+function backend(){if(IA.tipo==='claude')return 'claude';if(state.ia.proxy)return 'proxy';if(state.ia.chave)return 'api';return 'demo';}
+function promptIA(ctx){
+  const esp=ctx.item?item(ctx.item):null;
+  return `Você é o módulo de análise visual do ELO, um protótipo acadêmico de acompanhamento de medicamentos (sem uso clínico).
+${ctx.modo==='comprovacao'?'A pessoa enviou uma foto para acompanhar o registro de que tomou um medicamento. Descreva apenas os indícios visuais.':'A pessoa quer conferir qual medicamento aparece na embalagem da foto.'}
+${esp?`Medicamento que a pessoa está registrando: ${esp.nome} ${concTxt(esp)}, ${esp.forma}.`:''}
+Regras:
+1. Transcreva só o que está legível na foto. Se não conseguir ler, use null e confiança baixa. Não complete nomes nem doses por suposição, nem a partir do medicamento informado acima.
+2. Dê uma confiança de 0 a 1 para cada campo lido.
+3. Não identifique nem descreva pessoas.
+4. Não dê orientação clínica nem sobre dose.
+5. Uma foto não comprova que o remédio foi engolido; descreva somente o que aparece.
+Responda apenas com um objeto JSON neste formato, sem texto antes ou depois:
+{"tipo_imagem":"caixa"|"blister"|"comprimido_solto"|"outro"|"ilegivel","nome_lido":string|null,"nome_confianca":number,"concentracao_lida":string|null,"concentracao_confianca":number,"forma_lida":string|null,"forma_confianca":number,"alveolo_vazio_visivel":boolean|null,"multiplas_embalagens":boolean,"observacao":"uma frase curta, em português simples, dirigida à pessoa","pedir_nova_foto":boolean}`;
+}
+function limparIA(o){
+  o=o||{};const s=v=>typeof v==='string'&&v.trim()?v.trim().slice(0,120):null;const n=v=>{v=Number(v);return isFinite(v)?Math.max(0,Math.min(1,v)):0;};
+  return {tipo_imagem:s(o.tipo_imagem)||'outro',nome_lido:s(o.nome_lido),nome_confianca:n(o.nome_confianca),concentracao_lida:s(o.concentracao_lida),concentracao_confianca:n(o.concentracao_confianca),forma_lida:s(o.forma_lida),forma_confianca:n(o.forma_confianca),alveolo_vazio_visivel:typeof o.alveolo_vazio_visivel==='boolean'?o.alveolo_vazio_visivel:null,multiplas_embalagens:!!o.multiplas_embalagens,observacao:s(o.observacao)||'',pedir_nova_foto:!!o.pedir_nova_foto};
+}
+function extrairJSON(t){try{return JSON.parse(t);}catch(e){const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a>=0&&b>a)return JSON.parse(t.slice(a,b+1));throw {code:'invalid_json'};}}
+async function chamarIA(foto,ctx,signal){
+  const b=backend(),prompt=promptIA(ctx);
+  if(b==='claude')return limparIA(await IA.sample.json(prompt,{images:[foto.blob],modelTier:'default',cache:false,signal}));
+  if(b==='proxy'){const esp=ctx.item?item(ctx.item):null;
+    const r=await fetch(state.ia.proxy,{method:'POST',headers:{'content-type':'application/json'},signal,body:JSON.stringify({imagem:foto.b64,media_type:'image/jpeg',modo:ctx.modo,esperado:esp?{nome:esp.nome,concentracao:concTxt(esp),forma:esp.forma}:null})});
+    if(!r.ok)throw {code:'http',message:'O servidor de análise respondeu '+r.status};return limparIA(await r.json());}
+  if(b==='api'){
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal,headers:{'content-type':'application/json','x-api-key':state.ia.chave,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:state.ia.modelo||'claude-sonnet-5-5',max_tokens:700,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:foto.b64}},{type:'text',text:prompt}]}]})});
+    if(!r.ok)throw {code:'http',message:'A API respondeu '+r.status+(r.status===401?' (chave inválida)':'')};
+    const d=await r.json();const t=(d.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');return limparIA(extrairJSON(t));}
+  throw {code:'demo'};
+}
+function erroIA(e){
+  const c=e&&e.code;
+  if(c==='demo')return 'A análise por IA não está ligada neste aparelho. Veja em Ajustes › Análise de fotos.';
+  if(c==='not_granted')return 'A análise por IA não foi permitida nesta página.';
+  if(c==='rate_limited')return 'Muitas análises seguidas. Tente de novo em alguns minutos.';
+  if(c==='image_rejected')return 'Não consegui abrir essa imagem. Tente outra foto.';
+  if(c==='refused')return 'A IA não analisou essa foto. Tente uma foto só da embalagem.';
+  if(c==='cancelled'||(e&&e.name==='AbortError'))return 'Análise cancelada.';
+  if(c==='invalid_json')return 'A resposta da IA veio num formato inesperado. Tente de novo.';
+  return (e&&e.message)?'Não consegui analisar agora: '+e.message:'Não consegui analisar agora. Verifique a conexão e tente de novo.';
+}
+async function prepararImagem(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('formato'));i.src=url;});
+    const W=img.naturalWidth,H=img.naturalHeight,s=Math.min(1,1280/Math.max(W,H));
+    const c=document.createElement('canvas');c.width=Math.round(W*s);c.height=Math.round(H*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.85));const b64=c.toDataURL('image/jpeg',.85).split(',')[1];
+    const t=document.createElement('canvas'),ts=Math.min(1,220/Math.max(c.width,c.height));t.width=Math.round(c.width*ts);t.height=Math.round(c.height*ts);t.getContext('2d').drawImage(c,0,0,t.width,t.height);
+    return {blob,b64,thumb:t.toDataURL('image/jpeg',.7)};
+  }finally{URL.revokeObjectURL(url);}
+}
+function avaliar(ia,ctx){
+  if(!ia)return {decisao:'INCONCLUSIVO',motivo:'Sem análise.'};
+  if(ia.tipo_imagem==='ilegivel'&&!ia.nome_lido)return {decisao:'INCONCLUSIVO',motivo:ia.observacao||'A foto não ficou legível.'};
+  const l={nome:ia.nome_lido,conc:ia.concentracao_lida,forma:ia.forma_lida,conf:{nome:ia.nome_confianca,conc:ia.concentracao_confianca,forma:ia.forma_confianca},multiplas:ia.multiplas_embalagens};
+  const r=conferir(l,planoAtual(),{formaOpcional:ctx.modo==='comprovacao'});
+  if(ctx.item&&r.itemId&&r.itemId!==ctx.item&&r.decisao!=='INCONCLUSIVO'){const a=item(r.itemId),b=item(ctx.item);return {decisao:'DIVERGENTE',itemId:r.itemId,motivo:`A foto mostra ${nomeComp(a)}, mas você está registrando ${nomeComp(b)}.`};}
+  return r;
+}
+async function executarAnalise(foto,ctx,signal){
+  let ia=null,erro=null,fonte;
+  if(foto.ex){fonte='simulada';const p=PROVAS.find(x=>x.id===foto.ex);if(p)ia=limparIA(p.ia);else{const l=CASOS.find(x=>x.id===foto.ex).leitura;const x=l.multiplas?l.leituras[0]:l;ia=limparIA({tipo_imagem:'caixa',nome_lido:x.nome,nome_confianca:x.conf.nome,concentracao_lida:x.conc,concentracao_confianca:x.conf.conc,forma_lida:x.forma,forma_confianca:x.conf.forma,alveolo_vazio_visivel:null,multiplas_embalagens:!!l.multiplas,observacao:'',pedir_nova_foto:false});}await sleep(1100);}
+  else{fonte=backend();try{ia=await chamarIA(foto,ctx,signal);}catch(e){erro=erroIA(e);}}
+  const res=ia?avaliar(ia,ctx):{decisao:'INCONCLUSIVO',motivo:erro};
+  const estado={CONFIRMA:'correspondente',DIVERGENTE:'divergente',INCONCLUSIVO:'inconclusivo'}[res.decisao];
+  const det=`${FONTE[fonte]}. ${ia&&ia.observacao?ia.observacao+' ':''}${res.motivo||''}${ctx.modo==='comprovacao'?' Indício visual; não comprova ingestão.':''}`.trim();
+  const ev=logEvento({tipo:ctx.modo==='comprovacao'?'evidencia_foto':'conferencia',itemId:res.itemId||ctx.item||null,origem:foto.ex?'imagem_simulada':'foto_aparelho',estado,detalhe:det,foto:{thumb:foto.thumb||null,ex:foto.ex||null},analise:{fonte,ia}});
+  return {res,ia,ev,fonte,erro};
+}
+function textoResultado(a,ctx){
+  const r=a.res,it=r.itemId?item(r.itemId):null;
+  if(r.decisao==='CONFIRMA'){
+    if(ctx.modo==='comprovacao')return `A foto mostra ${nomeComp(it)}${a.ia&&a.ia.alveolo_vazio_visivel?', com espaço vazio na cartela':''}. Confere com o seu tratamento. Confirma que tomou agora?`;
+    return `Confere com o seu tratamento: ${nomeComp(it)}.`;
+  }
+  if(r.decisao==='DIVERGENTE')return MSG.divergImagem+' '+(r.motivo||'');
+  return MSG.falhaImagem+' '+((a.ia&&a.ia.observacao)||r.motivo||'');
+}
+
+/* =================== Rotas, voltar e perfis =================== */
+const PERFIS={
+  paciente:{nome:'Pessoa usuária',desc:'Maria Aparecida (persona fictícia)',tabs:[['hoje','Hoje'],['conferir','Conferir'],['conversar','Conversar'],['ajustes','Ajustes']]},
+  farmaceutico:{nome:'Farmacêutico',desc:'Farm. Ana Lima (fictícia) · acesso autenticado simulado',tabs:[['fila','Fila'],['plano','Plano'],['retiradas','Retiradas'],['trilha','Trilha']]},
+  pesquisa:{nome:'Pesquisa',desc:'Bancada dos 40 cenários sintéticos',tabs:[['resumo','Resumo'],['casos','Casos'],['matriz','Matriz'],['sobre','Sobre']]}
+};
+function ROTA(){let [pf,tab]=location.hash.slice(1).split('-');if(pf==='bancada')pf='pesquisa';if(!PERFIS[pf])pf='paciente';if(!PERFIS[pf].tabs.some(t=>t[0]===tab))tab=ui.tab[pf];return {pf,tab};}
+const perfilAtual=()=>ROTA().pf;
+function ir(pf,tab){const k=`${pf}-${tab}`;if(location.hash.slice(1)===k){ui.tab[pf]=tab;render();return;}location.hash='#'+k;}
+function aoMudarRota(){
+  const r=ROTA(),k=r.pf+'-'+r.tab;
+  if(ui.voltando)ui.voltando=false;
+  else if(ui.pilha.length&&ui.pilha[ui.pilha.length-1]===k)ui.pilha.pop();
+  else if(ui.rota&&ui.rota!==k){ui.pilha.push(ui.rota);if(ui.pilha.length>30)ui.pilha.shift();}
+  ui.rota=k;ui.tab[r.pf]=r.tab;ui.sheet=null;ui.msgSlot=null;render();
+}
+function podeVoltar(){const {pf}=ROTA();if(pf==='paciente'&&!state.prefs.acolhido&&ui.obStep>0)return true;if(pf==='farmaceutico'&&ui.draft)return true;return ui.pilha.length>0;}
+function voltar(){
+  if(ui.sheet){fecharSheet();return;}
+  const {pf}=ROTA();
+  if(pf==='paciente'&&!state.prefs.acolhido&&ui.obStep>0){ui.obStep--;render();return;}
+  if(pf==='farmaceutico'&&ui.draft){ui.draft=null;render();aviso('Alterações descartadas.');return;}
+  if(ui.pilha.length){ui.voltando=true;location.hash='#'+ui.pilha.pop();}
+}
+const pendentesFarm=()=>state.eventos.filter(e=>['duvida','divergente','bloqueado'].includes(e.estado)&&!e.revisado).length+state.encaminhamentos.filter(e=>e.estado!=='respondido').length;
+
+/* =================== ELO narra cada tela =================== */
+function guiaTexto(){
+  const {pf,tab}=ROTA();
+  if(pf==='paciente'){
+    if(tab==='hoje'){const sl=slotsHoje(),est=sl.map(s=>estadoSlot(s.key)),conf=est.filter(e=>e&&e.tipo==='tomada').length,n=minAgora();
+      const pend=(s,i)=>!(est[i]&&est[i].tipo==='tomada');const prox=sl.find((s,i)=>pend(s,i)&&minutos(s.hora)>=n)||sl.find(pend);
+      return `Esta é a sua agenda de hoje. Você confirmou ${conf} de ${sl.length} doses.${prox?` A próxima é ${nomeComp(prox.item)}, às ${prox.hora}.`:' Tudo de hoje já está confirmado.'} Quando tomar, toque em “Já tomei”. Se quiser, mande também uma foto da cartela.`;}
+    if(tab==='conferir')return 'Aqui você confere se a caixa é a mesma do seu tratamento. Fotografe a embalagem ou digite o que está escrito. Eu comparo com o plano do seu farmacêutico e aviso se algo estiver diferente.';
+    if(tab==='conversar')return 'Escreva do seu jeito ou use o microfone. Se eu precisar de uma foto da caixa ou da cartela, eu peço.';
+    return 'Aqui você deixa o aplicativo do seu jeito: cores, tamanho da letra e voz. Nada aqui pergunta sobre a sua saúde.';
+  }
+  if(pf==='farmaceutico'){
+    if(tab==='fila'){const n=pendentesFarm();return n?`Há ${n} ${n===1?'item que pede':'itens que pedem'} sua atenção: dúvidas, divergências, fotos que não conferem e pedidos da pessoa. O restante fica na trilha.`:'Nada pede sua atenção agora. Dúvidas, divergências e pedidos aparecem aqui assim que acontecem.';}
+    if(tab==='plano')return ui.draft?'Você está editando o plano. Ao publicar, crio uma nova versão e a anterior fica no histórico.':`Este é o plano vigente, versão ${planoAtual().versao}. É dele que saem as respostas e as conferências do aplicativo. Toda alteração vira uma nova versão.`;
+    if(tab==='retiradas')return 'Registre aqui as retiradas na farmácia. Retirada não conta como tomada; as duas informações ficam separadas.';
+    return 'Aqui está tudo o que aconteceu, com origem, versão do plano e estado. Fotos enviadas aparecem com o resultado da análise.';
+  }
+  if(tab==='resumo')return 'Rodei os 40 cenários sintéticos nas condições A, B e C. Os números mostram se as regras funcionam como especificado; não são resultado clínico.';
+  if(tab==='casos')return 'Cada cartão mostra o gabarito e o que cada condição fez. Use os filtros para ver um grupo.';
+  if(tab==='matriz')return 'A matriz compara gabarito e saída. Abaixo, cada critério mínimo aparece ligado aos casos que o testam.';
+  return 'Aqui está o que funciona de verdade e o que ainda é simulado neste protótipo.';
+}
+function guiaHTML(slim){const t=guiaTexto();return `<div class="guia${slim?' slim':''}"><span class="elo-av" aria-hidden="true">ELO</span><p><span class="vis">ELO diz: </span>${esc(t)}</p><button class="iconbtn" data-act="ouvir" data-say="${esc(t)}" aria-label="Ouvir o ELO">${ic('som',20)}</button></div>`;}
+function narrar(){const {pf}=ROTA();if(pf==='paciente'&&state.prefs.acolhido&&state.prefs.narrar&&state.prefs.modo!=='ler')falar(guiaTexto());}
+
+/* =================== Casca do app =================== */
+function render(){
+  aplicarPrefs();
+  const {pf,tab}=ROTA(),scr=$('#screen'),chave=pf+':'+tab,st=scr.scrollTop;
+  ui.tab[pf]=tab;if(!ui.rota)ui.rota=pf+'-'+tab;
+  const onb=pf==='paciente'&&!state.prefs.acolhido;
+  let t='',sub='',html='',cls='screen';
+  if(onb){t='Boas-vindas';sub='Passo '+(ui.obStep+1)+' de 4';html=renderAcolhe();cls+=' pac onb';}
+  else if(pf==='paciente'){cls+=' pac';
+    const hoje=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+    if(tab==='hoje'){t='Olá, '+planoAtual().pessoa.split(' ')[0];sub=hoje;html=guiaHTML()+renderHoje();}
+    else if(tab==='conferir'){t='Conferir caixa';sub='Compare com o seu tratamento';html=guiaHTML()+renderConferir();}
+    else if(tab==='conversar'){t='Conversar';sub='Fale do seu jeito';html=renderConversa();cls+=' chat';}
+    else{t='Ajustes';sub='Leitura, voz e aparência';html=guiaHTML()+renderAjustes();}
+  }else if(pf==='farmaceutico'){
+    if(tab==='fila'){t='Precisa de atenção';sub=PERFIS.farmaceutico.desc;html=renderFila();}
+    else if(tab==='plano'){t=ui.draft?'Nova versão do plano':'Plano v'+planoAtual().versao;sub=planoAtual().pessoa+' · persona fictícia';html=renderPlano();}
+    else if(tab==='retiradas'){t='Retiradas';sub='Dispensação, separada do uso';html=renderRetiradas();}
+    else{t='Trilha de eventos';sub=state.eventos.length+' eventos registrados';html=renderTrilha();}
+    html=guiaHTML()+html;
+  }else{
+    if(!ui.res)executar();
+    if(tab==='resumo'){t='Desfechos';sub='Condições A, B e C · 40 cenários';html=renderResumo();}
+    else if(tab==='casos'){t='Casos';sub='Gabarito × saída';html=renderCasos();}
+    else if(tab==='matriz'){t='Matrizes';sub='Confusão e rastreabilidade';html=renderMatriz();}
+    else{t='Sobre o protótipo';sub='O que é real e o que é simulado';html=renderSobre();}
+    html=guiaHTML()+html;
+  }
+  const escuro=state.prefs.tema==='escuro';
+  $('#appbar').innerHTML=`${podeVoltar()?`<button class="iconbtn" style="margin-left:-10px" data-act="voltar" aria-label="Voltar">${ic('voltar')}</button>`:''}<div class="tt"><h1>${esc(t)}</h1><p>${esc(sub)}</p></div>
+    <button class="iconbtn" data-act="tema-alternar" aria-label="${escuro?'Usar tema claro':'Usar tema escuro'}">${ic(escuro?'sol':'lua')}</button>
+    <button class="iconbtn" data-act="sheet" data-arg="perfil" aria-label="Trocar perfil (atual: ${PERFIS[pf].nome})"><span class="avatar">${PERFIS[pf].nome[0]}</span></button>`;
+  scr.className=cls;scr.innerHTML=html;
+  const tb=$('#tabbar');tb.hidden=onb;$('#app').classList.toggle('sem-abas',onb);
+  const pend=pendentesFarm();
+  tb.innerHTML=PERFIS[pf].tabs.map(([k,r])=>`<button class="tab" data-act="tab" data-arg="${k}"${k===tab?' aria-current="page"':''}><span class="pill">${ic(k)}${pf==='farmaceutico'&&k==='fila'&&pend?`<span class="badge">${pend}</span>`:''}</span>${r}</button>`).join('');
+  if(ui.ultimaTela===chave)scr.scrollTop=st;else scr.scrollTop=0;ui.ultimaTela=chave;
+  if(pf==='paciente'&&tab==='conversar'&&!onb){const l=$('#chatlog');if(l)l.scrollTop=l.scrollHeight;}
+  renderSheet();
+}
+
+/* =================== Sheets =================== */
+function abrirSheet(tipo,arg){ui.sheet={tipo,arg};renderSheet();}
+function fecharSheet(){if(ui.analise&&ui.analise.ctl&&ui.analise.status==='carregando')ui.analise.ctl.abort();ui.sheet=null;renderSheet();}
+const shHead=t=>`<div class="sh"><h2 id="sheet-t">${t}</h2><button class="iconbtn" data-act="fechar" aria-label="Fechar">${ic('x')}</button></div>`;
+const eloDiz=t=>`<div class="guia"><span class="elo-av" aria-hidden="true">ELO</span><p>${esc(t)}</p><button class="iconbtn" data-act="ouvir" data-say="${esc(t)}" aria-label="Ouvir o ELO">${ic('som',20)}</button></div>`;
+const SHEETS={
+  confirmar:key=>{const s=slotPorKey(key);if(!s)return shHead('Registro indisponível');const it=s.item;
+    return `${shHead('Confirma que tomou?')}<div class="card flat"><div class="rx"><span class="nm">${esc(it.nome)}</span><span class="lead"></span><span class="cc">${esc(concTxt(it))}</span></div><p class="sub">${esc(it.posologia)} · horário das ${s.hora}, hoje</p></div>
+    ${eloDiz('Se quiser, mande uma foto da cartela mostrando o nome e o espaço vazio. A foto ajuda o farmacêutico a conferir, mas não prova que o remédio foi tomado.')}
+    <div class="stackb"><button class="btn pri block" data-foco data-act="tomei-sim" data-arg="${key}">${ic('check',20)}Sim, tomei</button>
+      <button class="btn block" data-act="foto-abrir" data-arg="comprovacao|${it.id}|${key}|sheet">${ic('camera',20)}Sim, e quero mandar foto</button>
+      <button class="btn ghost block" data-act="fechar">Não, voltar</button></div>`;},
+  foto:()=>{const c=ui.fotoCtx||{modo:'conferencia'};const it=c.item?item(c.item):null;const b=backend();
+    const msg=c.modo==='comprovacao'?`Fotografe a cartela de ${it?nomeComp(it):'remédio'} mostrando o nome, a dose e o espaço vazio. Não precisa aparecer o seu rosto.`:'Fotografe a frente da caixa ou da cartela, com o nome e a dose bem visíveis.';
+    return `${shHead(c.modo==='comprovacao'?'Foto da cartela':'Foto da embalagem')}${eloDiz(msg)}
+      <button class="hero" data-act="camera">${'<span class="ico">'+ic('camera',28)+'</span>'}<span><strong>Abrir câmera</strong><span>${b==='demo'?'IA desligada: a foto real fica sem análise':FONTE[b]}</span></span></button>
+      <div class="sec">Ou use um exemplo simulado</div><div class="galeria">${c.modo==='comprovacao'?PROVAS.map(p=>`<button data-act="foto-exemplo" data-arg="${p.id}" aria-label="Exemplo simulado: ${esc(p.rotulo)}">${ilustracao(p)}<small>${esc(p.rotulo)}</small></button>`).join(''):['C01','C03','D05','D07','I02','I08'].map(id=>{const k=CASOS.find(x=>x.id===id);return `<button data-act="foto-exemplo" data-arg="${id}" aria-label="Exemplo simulado: ${esc(k.desc)}">${pkgHTML(k)}<small>${esc(k.rotulo)}</small></button>`;}).join('')}</div>`;},
+  consentimento:()=>`${shHead('Antes de enviar a foto')}${eloDiz('A foto será enviada para uma IA analisar o que está escrito na embalagem. Fotografe só a caixa ou a cartela, sem rosto e sem documentos. Isto é uma demonstração: não use para decisões de saúde.')}
+    <p class="fonte">${FONTE[backend()]}</p>
+    <div class="stackb"><button class="btn pri block" data-foco data-act="consentir">Entendi, abrir câmera</button><button class="btn block" data-act="fechar">Agora não</button></div>`,
+  analise:()=>{const a=ui.analise;if(!a)return shHead('Análise');
+    if(a.status==='carregando')return `${shHead('Analisando a foto')}<div class="row" style="gap:14px;align-items:flex-start;flex-wrap:nowrap"><div style="width:120px;flex:none">${fotoHTML(a.foto,'thumb')}</div><div class="stackb" style="flex:1;min-width:0"><p><strong>Estou olhando sua foto…</strong></p><span class="pensando" aria-hidden="true"><i></i><i></i><i></i></span><p class="fonte">${a.foto.ex?FONTE.simulada:FONTE[backend()]}</p></div></div>
+      <button class="btn block" data-foco data-act="analise-cancelar">Cancelar</button>`;
+    const r=a.out.res,k=r.decisao==='CONFIRMA'?'ok':r.decisao==='DIVERGENTE'?'crit':'warn',ia=a.out.ia,it=r.itemId?item(r.itemId):null;
+    const titulo=r.decisao==='CONFIRMA'?(a.ctx.modo==='comprovacao'?'A foto confere':'Confere com o seu tratamento'):r.decisao==='DIVERGENTE'?'Informação diferente':'Não deu para conferir';
+    const lido=ia?`<dl class="lido"><dt>Tipo</dt><dd>${esc({caixa:'Caixa',blister:'Cartela',comprimido_solto:'Comprimido sem embalagem',outro:'Outro',ilegivel:'Ilegível'}[ia.tipo_imagem]||ia.tipo_imagem)}</dd><dt>Nome</dt><dd>${esc(ia.nome_lido||'não legível')}</dd><dt>Dose</dt><dd>${esc(ia.concentracao_lida||'não legível')}</dd>${a.ctx.modo==='comprovacao'?`<dt>Espaço vazio</dt><dd>${ia.alveolo_vazio_visivel===true?'sim':ia.alveolo_vazio_visivel===false?'não':'não dá para ver'}</dd>`:''}</dl>`:'';
+    let acoes;
+    if(a.ctx.modo==='comprovacao'&&r.decisao==='CONFIRMA')acoes=`<button class="btn pri block" data-foco data-act="tomei-com-foto">${ic('check',20)}Sim, tomei</button><button class="btn ghost block" data-act="fechar">Não, voltar</button>`;
+    else if(r.decisao==='CONFIRMA')acoes=`<button class="btn pri block" data-foco data-act="fechar">Pronto</button>`;
+    else acoes=`<button class="btn pri block" data-foco data-act="camera">${ic('camera',20)}Tirar outra foto</button>${a.ctx.modo==='comprovacao'?`<button class="btn block" data-act="tomei-sim" data-arg="${a.ctx.slot}">Registrar sem foto</button>`:`<button class="btn block" data-act="sheet" data-arg="digitar">Digitar o que está escrito</button>`}<button class="btn ghost block" data-act="enc-de-sheet">Falar com meu farmacêutico</button>`;
+    return `${shHead(titulo)}<div class="row" style="gap:14px;align-items:flex-start;flex-wrap:nowrap"><div style="width:120px;flex:none">${fotoHTML(a.foto,'thumb')}</div><div class="stackb" style="flex:1;min-width:0"><span class="status-ic ${k}">${ic(k==='ok'?'check':'alerta',26)}</span>${lido}</div></div>
+      ${eloDiz(textoResultado(a.out,a.ctx))}
+      ${r.decisao==='CONFIRMA'&&it&&a.ctx.modo!=='comprovacao'?'<p class="nota">A foto confere a embalagem, não o comprimido que está dentro dela.</p>':''}
+      <p class="fonte">${FONTE[a.out.fonte]}</p><div class="stackb">${acoes}</div>`;},
+  resultado:()=>{const r=ui.conferencia;if(!r)return shHead('Conferência');const it=r.itemId?item(r.itemId):null;
+    const k=r.decisao==='CONFIRMA'?'ok':r.decisao==='DIVERGENTE'?'crit':'warn';
+    const titulo=r.decisao==='CONFIRMA'?'Confere com o seu tratamento':r.decisao==='DIVERGENTE'?'Informação diferente':'Não deu para conferir';
+    const fala=r.decisao==='CONFIRMA'?`Confere com o seu tratamento: ${nomeComp(it)}, ${it.forma}. ${it.posologia}.`:(r.decisao==='DIVERGENTE'?MSG.divergImagem:MSG.falhaImagem)+' '+r.motivo;
+    return `${shHead(titulo)}<div class="row" style="gap:14px"><span class="status-ic ${k}">${ic(k==='ok'?'check':'alerta',26)}</span></div>${eloDiz(fala)}
+      ${r.decisao==='CONFIRMA'?'<p class="nota">A foto confere a embalagem, não o comprimido que está dentro dela. Conferir a caixa não registra que você tomou.</p>':''}
+      <div class="stackb">${r.decisao==='CONFIRMA'?`<button class="btn pri block" data-foco data-act="fechar">Pronto</button>`:
+        `<button class="btn pri block" data-foco data-act="enc-de-sheet">Falar com meu farmacêutico</button><button class="btn block" data-act="foto-abrir" data-arg="conferencia|||sheet">Tirar uma foto</button><button class="btn block" data-act="sheet" data-arg="digitar">Digitar o que está escrito</button>`}</div>`;},
+  digitar:()=>`${shHead('Digite o que está na caixa')}<form id="form-digitar" class="stackb">
+      <label class="campo" for="dg-nome">Nome<input id="dg-nome" autocomplete="off" data-foco></label>
+      <label class="campo" for="dg-conc">Concentração (ex.: 50 mg)<input id="dg-conc" autocomplete="off"></label>
+      <label class="campo" for="dg-forma">Forma (ex.: comprimido)<input id="dg-forma" autocomplete="off"></label>
+      <p class="nota">O que você digitar é comparado com o plano do farmacêutico. Campos em branco não contam como conferidos.</p>
+      <button class="btn pri block" type="submit">Conferir</button></form>`,
+  enc:()=>{const ev=eventosAtencaoHoje();const resumo=ev.map(e=>`${TIPO[e.tipo]}${e.itemId&&item(e.itemId)?' · '+nomeComp(item(e.itemId)):''} · ${fHora(e.ts)}`);
+    return `${shHead('Falar com meu farmacêutico')}${eloDiz(resumo.length?'Vou enviar só o resumo abaixo. Seu histórico completo não vai junto.':'Hoje não há registro de dúvida. Escreva sua pergunta e eu envio.')}
+      ${resumo.length?`<ul class="lista">${resumo.map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`:''}
+      <label class="campo" for="enc-msg">Quer acrescentar algo? (opcional)<textarea id="enc-msg" rows="3"></textarea></label>
+      <p class="nota">Nesta demonstração, nenhum profissional real recebe o pedido.</p>
+      <div class="stackb"><button class="btn pri block" data-foco data-act="enc-enviar">Sim, pode enviar</button><button class="btn block" data-act="fechar">Agora não</button></div>`;},
+  perfil:()=>{const pf=perfilAtual();return `${shHead('Entrar como')}<div class="stackb">${Object.entries(PERFIS).map(([k,p])=>`<button class="perfil-op" data-act="perfil" data-arg="${k}"${k===pf?' aria-current="true" data-foco':''}><span class="avatar">${p.nome[0]}</span><span style="flex:1;min-width:0"><strong>${p.nome}</strong><span>${esc(p.desc)}</span></span>${k===pf?ic('check',20):''}</button>`).join('')}</div>
+    <p class="nota">Troca de perfil simulada. Em produção, cada perfil teria acesso autenticado e dados próprios.</p>`;},
+  fala:()=>`${shHead('Falar (simulado)')}${eloDiz('O microfone fica desligado nesta prova de conceito. Escolha uma fala para ver como eu respondo.')}
+    <div class="stackb">${FALAS.map((f,i)=>`<button class="btn block" style="justify-content:flex-start;font-weight:400"${i===0?' data-foco':''} data-act="fala" data-arg="${i}">${ic('mic',18)}“${esc(f)}”</button>`).join('')}</div>`,
+  responder:id=>`${shHead('Registrar retorno')}<form id="form-resp" data-enc="${id}" class="stackb"><label class="campo" for="resp-txt">Retorno para a pessoa (simulado)<textarea id="resp-txt" rows="4" data-foco></textarea></label>
+    <button class="btn pri block" type="submit">Enviar retorno</button></form>`
+};
+function renderSheet(){
+  const s=$('#sheet'),sc=$('#scrim'),aberto=!!ui.sheet;
+  ['#screen','#tabbar','#appbar'].forEach(q=>{$(q).inert=aberto;});
+  if(!aberto){s.hidden=true;sc.hidden=true;s.innerHTML='';return;}
+  s.className='sheet'+(perfilAtual()==='paciente'?' pac':'');
+  s.innerHTML='<div class="grab" aria-hidden="true"></div>'+SHEETS[ui.sheet.tipo](ui.sheet.arg);
+  s.hidden=false;sc.hidden=false;s.scrollTop=0;
+  const f=s.querySelector('[data-foco]')||s.querySelector('button,input,textarea');f&&f.focus({preventScroll:true});
+}
+
+/* =================== Fluxo de foto =================== */
+function abrirFoto(ctx){ui.fotoCtx=ctx;abrirSheet('foto');}
+function abrirCamera(){
+  const real=backend()!=='demo';
+  if(real&&!state.prefs.consentFoto){abrirSheet('consentimento');return;}
+  const f=$('#foto');f.value='';f.click();
+}
+async function processarFoto(foto){
+  const ctx=ui.fotoCtx||{modo:'conferencia',destino:'sheet'};
+  if(ctx.destino==='chat')return fotoNaConversa(foto,ctx);
+  const ctl=new AbortController();
+  ui.analise={ctx,foto,status:'carregando',ctl};ui.sheet={tipo:'analise'};renderSheet();falar('Estou olhando sua foto.');
+  const out=await executarAnalise(foto,ctx,ctl.signal);
+  if(ui.analise&&ui.analise.ctl===ctl){ui.analise.out=out;ui.analise.status='pronto';if(ui.sheet&&ui.sheet.tipo==='analise')renderSheet();falar(textoResultado(out,ctx));}
+  if(ROTA().pf==='paciente')render();
+}
+async function fotoNaConversa(foto,ctx){
+  ui.sheet=null;
+  state.chat.push({de:'voce',texto:ctx.modo==='comprovacao'?'Foto da cartela':'Foto da embalagem',foto:{thumb:foto.thumb||null,ex:foto.ex||null},origem:'foto'});
+  const m={de:'elo',texto:'Estou olhando sua foto…',pendente:true};state.chat.push(m);salvar();render();falar('Estou olhando sua foto.');
+  const out=await executarAnalise(foto,ctx);
+  m.pendente=false;m.texto=textoResultado(out,ctx);m.fonte=out.fonte;
+  const r=out.res;
+  if(ctx.modo==='comprovacao'&&r.decisao==='CONFIRMA')m.acoes=[{rot:'Sim, tomei',tipo:'confirmar',itens:[r.itemId],evidencia:out.ev.id},{rot:'Não',tipo:'cancelar'}];
+  else if(r.decisao==='CONFIRMA')m.acoes=[];
+  else m.acoes=[{rot:'Tirar outra foto',tipo:'foto',modo:ctx.modo,item:ctx.item||null},{rot:'Mandar para o farmacêutico',tipo:'enc'}];
+  salvar();render();falar(m.texto);
+}
+
+/* =================== Pessoa usuária =================== */
+function renderAcolhe(){
+  const s=ui.obStep,P=state.prefs;
+  const dots=`<div class="dots" aria-label="Passo ${s+1} de 4">${[0,1,2,3].map(i=>`<i class="${i<=s?'on':''}"></i>`).join('')}</div>`;
+  const fala=t=>`<div class="fala-elo"><span class="elo-av" aria-hidden="true">ELO</span><h2>${t}</h2></div>`;
+  const pular=`<button class="btn ghost block" data-act="ob-fim">Pular e usar o padrão</button>`;
+  if(s===0)return `<div class="onb-top">${dots}${fala(MSG.acolhe)}<button class="btn ghost" style="justify-self:start;padding-left:0" data-act="ouvir" data-say="${esc(MSG.acolhe)}">${ic('som',20)}Ouvir esta mensagem</button></div>
+    <div class="stackb" role="group" aria-label="Como prefere usar">${[['ler','Prefiro ler','Tudo aparece na tela'],['ouvir','Prefiro ouvir','Leio em voz alta quando você tocar'],['ambos','Os dois','Tela e voz juntas']].map(([k,r,d])=>`<button class="opcao" aria-pressed="${P.modo===k}" data-act="ob-modo" data-arg="${k}">${ic(k==='ler'?'casos':k==='ouvir'?'som':'conversar')}<span><strong>${r}</strong><span>${d}</span></span></button>`).join('')}</div>
+    <div class="onb-foot"><p class="nota">Nada aqui pergunta sobre saúde, idade ou escolaridade. A voz só toca quando você pedir.</p>${pular}</div>`;
+  if(s===1)return `<div class="onb-top">${dots}${fala(MSG.letra)}</div>${blocoEscala()}
+    <div class="onb-foot"><button class="btn pri block" data-act="ob-ir" data-arg="2">Ficou bom</button>${pular}</div>`;
+  if(s===2)return `<div class="onb-top">${dots}${fala('Como prefere as cores?')}</div>
+    <div class="seg" role="group" aria-label="Tema"><button aria-pressed="${P.tema!=='escuro'}" data-act="tema" data-arg="claro">Claro</button><button aria-pressed="${P.tema==='escuro'}" data-act="tema" data-arg="escuro">Escuro</button></div>
+    <div class="list"><div class="li"><span class="lbl" id="lb-hc">Contraste alto<span class="hint">Bordas e textos mais marcados</span></span><button class="switch" role="switch" aria-checked="${!!P.contraste}" aria-labelledby="lb-hc" data-act="contraste-alternar"></button></div></div>
+    <div class="preview"><div class="rx"><span class="nm">Losartana potássica</span><span class="lead"></span><span class="cc">50 mg</span></div><p class="sub">1 comprimido pela manhã</p></div>
+    <div class="onb-foot"><button class="btn pri block" data-act="ob-ir" data-arg="3">Continuar</button>${pular}</div>`;
+  return `<div class="onb-top">${dots}${fala(MSG.voz)}</div>${blocoVoz()}
+    <div class="onb-foot"><p class="nota">Em cada tela eu explico o que está acontecendo. Você pode desligar a narração em Ajustes.</p><button class="btn pri block" data-act="ob-fim">Começar</button><button class="btn block" data-act="ob-so-tela">Usar só a tela</button></div>`;
+}
+function blocoEscala(){const pct=Math.round(state.prefs.escala*100);return `<div class="stepper"><button class="btn" data-act="escala" data-arg="-1" aria-label="Diminuir letras">A−</button><span class="val" aria-live="polite">${pct}%</span><button class="btn" data-act="escala" data-arg="1" aria-label="Aumentar letras" style="font-size:1.2em">A+</button></div>
+  <div class="preview"><div class="rx"><span class="nm">Cloridrato de metformina</span><span class="lead"></span><span class="cc">850 mg</span></div><p class="sub">1 comprimido no almoço e 1 no jantar</p></div>`;}
+function blocoVoz(){const P=state.prefs;return `<div class="row"><button class="btn grow" data-act="testar-voz">${ic('som',20)}Testar minha voz</button><button class="btn" data-act="parar-voz">Parar</button></div>
+  <label class="campo" for="vel">Velocidade da voz: <span class="num" id="vel-val">${P.vel.toFixed(1)}×</span><input id="vel" type="range" min="0.6" max="1.6" step="0.1" value="${P.vel}" data-input="vel"></label>
+  ${temVoz?'':'<p class="nota">Este navegador não oferece voz. Tudo continua disponível na tela.</p>'}`;}
+
+const periodo=h=>{const m=minutos(h);return m<720?'Manhã':m<1080?'Tarde':'Noite';};
+function renderHoje(){
+  const p=planoAtual(),n=minAgora(),sl=slotsHoje(),est=sl.map(s=>estadoSlot(s.key));
+  const conf=est.filter(e=>e&&e.tipo==='tomada').length,duv=est.filter(e=>e&&e.tipo==='duvida').length;
+  const resp=state.encaminhamentos.filter(e=>e.resposta&&!e.lidaPessoa);
+  let html=`<div class="card"><div><div class="big num">${conf} de ${sl.length}</div><p class="sub">doses que você confirmou hoje${duv?` · ${duv} marcada${duv>1?'s':''} como dúvida`:''}</p></div>
+    <div class="segbar" aria-hidden="true">${est.map(e=>`<i class="${e?(e.tipo==='tomada'?'ok':'warn'):''}"></i>`).join('')}</div></div>`;
+  if(resp.length)html+=`<div class="card acc" role="status"><h3>Seu farmacêutico respondeu</h3>${resp.map(e=>`<p>${esc(e.resposta)}</p>`).join('')}<p class="nota">Resposta simulada nesta demonstração.</p><div class="acts"><button class="btn pri" data-act="resp-lida">Entendi</button><button class="btn" data-act="ouvir" data-say="${esc(resp.map(e=>e.resposta).join(' '))}">${ic('som',20)}Ouvir</button></div></div>`;
+  let horaAnt='';
+  sl.forEach((s,i)=>{
+    if(s.hora!==horaAnt){html+=`<div class="sec">${s.hora} · ${periodo(s.hora)}</div>`;horaAnt=s.hora;}
+    const st=est[i],it=s.item;
+    const ev=st&&st.tipo==='tomada'&&st.ev.evidencia?state.eventos.find(e=>e.id===st.ev.evidencia):null;
+    let chip;
+    if(st&&st.tipo==='tomada')chip=`<span class="chip ok">${ic('check',14)}Confirmado às ${fHora(st.ev.ts)}${ev?' · com foto':''}</span>`;
+    else if(st&&st.tipo==='duvida')chip='<span class="chip warn">Marcado como dúvida</span>';
+    else if(minutos(s.hora)<=n)chip='<span class="chip">Sem confirmação hoje</span>';
+    else chip='<span class="chip">Mais tarde</span>';
+    const fala=`${it.nome}, ${concTxt(it)}. ${it.posologia}. Horário: ${s.hora}.`;
+    const ouvir=`<button class="iconbtn" data-act="ouvir" data-say="${esc(fala)}" aria-label="Ouvir ${esc(it.nome)}">${ic('som')}</button>`;
+    const acoes=(st&&st.tipo==='tomada')?'':`<div class="acts"><button class="btn pri" data-act="tomei" data-arg="${s.key}">Já tomei</button><button class="btn" data-act="naolembro" data-arg="${s.key}">Não lembro</button></div>`;
+    const msg=ui.msgSlot&&ui.msgSlot.key===s.key?`<p class="nota" role="status">${esc(ui.msgSlot.txt)}</p>`:'';
+    html+=`<article class="card"><div class="row sb">${chip}${ouvir}</div>
+      <div class="rx"><span class="nm">${esc(it.nome)}</span><span class="lead"></span><span class="cc">${esc(concTxt(it))}</span></div>
+      <p class="sub">${esc(it.posologia)} · ${esc(it.forma)}</p>${ev?`<div class="row" style="flex-wrap:nowrap">${ev.foto&&ev.foto.thumb?`<img class="thumb-sm" src="${ev.foto.thumb}" alt="Foto da cartela">`:''}<p class="nota">Foto ${ESTADO[ev.estado].toLowerCase()} · ${FONTE[(ev.analise||{}).fonte]||''}</p></div>`:''}${acoes}${msg}</article>`;
+  });
+  const ult=p.itens.map(it=>{const d=state.dispensacoes.filter(x=>x.itemId===it.id).pop();return `<div class="row sb"><span>${esc(it.nome)}</span><span class="num sub">${d?fData(d.data):'—'}</span></div>`;}).join('');
+  const meus=state.encaminhamentos.slice().reverse().slice(0,3).map(e=>`<div class="row sb"><span class="num sub">${fDataHora(e.ts)}</span><span class="chip ${e.estado==='respondido'?'ok':'acc'}">${e.estado==='respondido'?'Respondido':e.estado==='em_analise'?'Em análise':'Enviado'}</span></div>`).join('');
+  html+=`<div class="sec">Farmácia</div>
+    <button class="hero" data-act="sheet" data-arg="enc"><span class="ico">${ic('conversar',26)}</span><span><strong>Falar com meu farmacêutico</strong><span>Você confere o que será enviado</span></span></button>
+    ${meus?`<div class="card"><h3>Seus pedidos</h3>${meus}</div>`:''}
+    <div class="card"><h3>Última retirada na farmácia</h3>${ult}<p class="nota">Registro feito pelo farmacêutico. Retirar o medicamento não conta como tomada.</p></div>
+    <p class="nota">Tratamento versão ${p.versao}, conferido por ${esc(p.validadoPor)} em ${fData(p.publicadoEm)}. Origem: ${esc(p.origem)}. Vigente até ${fData(p.vigencia.fim)}.</p>`;
+  return html;
+}
+const GALERIA=['C01','C02','C03','C04','D01','D04','D05','D07','I01','I02','I05','I08'];
+function renderConferir(){
+  const b=backend();
+  return `<button class="hero" data-act="foto-abrir" data-arg="conferencia|||sheet"><span class="ico">${ic('camera',28)}</span><span><strong>Fotografar a caixa</strong><span>${b==='demo'?'Abre a câmera · IA desligada neste aparelho':'Abre a câmera · '+FONTE[b]}</span></span></button>
+    <div class="tiles"><button class="tile" data-act="sheet" data-arg="digitar">${ic('teclado',26)}Digitar o que está escrito</button><button class="tile" data-act="sheet" data-arg="enc">${ic('ajuda',26)}Pedir ajuda ao farmacêutico</button></div>
+    <p class="nota">Tirar foto pode não ser possível para todo mundo. Digitar ou pedir ajuda funcionam do mesmo jeito.</p>
+    <div class="sec">Fotos de exemplo · leitura simulada</div>
+    <div class="galeria">${GALERIA.map(id=>{const c=CASOS.find(x=>x.id===id);return `<button data-act="conferir" data-arg="${id}" aria-label="Foto de exemplo: ${esc(c.desc)}">${pkgHTML(c)}<small>${esc(c.rotulo)}</small></button>`;}).join('')}</div>`;
+}
+const CHIPS=['O que eu tomo hoje?','Já tomei o remédio da pressão','Já tomei a metformina','Não lembro se tomei','Esqueci, tomo dois agora?','Para que serve a sinvastatina?','Repete','Letra maior','Falar com meu farmacêutico'];
+const FALAS=['tomei a losartana de cem','tomei metformina oitocentos e cinquenta','acho que já tomei a metformina','tomei o do açúcar e o do colesterol','tomei o branquinho','tomei a hidro','fala mais devagar'];
+function renderConversa(){
+  const log=state.chat.map((m,i)=>`<div class="msg ${m.de}"><span class="vis">${m.de==='voce'?'Você':'ELO'}: </span>${m.foto?`<div style="margin-bottom:.4em">${fotoHTML(m.foto,'thumb')}</div>`:''}${m.pendente?`<span class="pensando" aria-label="Analisando"><i></i><i></i><i></i></span> `:''}${esc(m.texto)}${m.origem==='fala_simulada'?'<span class="orig">fala transcrita (simulada)</span>':''}${m.fonte?`<span class="orig">${FONTE[m.fonte]}</span>`:''}${m.acoes&&m.acoes.length&&!m.feito?`<div class="acoes">${m.acoes.map((a,j)=>`<button class="btn${j===0?' pri':''}" data-act="chat-acao" data-arg="${i}:${j}">${a.tipo==='foto'?ic('camera',18):''}${esc(a.rot)}</button>`).join('')}</div>`:''}</div>`).join('');
+  return `${guiaHTML(true)}<div class="chatlog" id="chatlog" role="log" aria-live="polite" aria-label="Conversa">${log}</div>
+    <div class="chipsrow" aria-label="Sugestões">${CHIPS.map(c=>`<button class="btn" data-act="chip" data-txt="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+    <form class="composer" id="chatform"><button type="button" class="iconbtn" data-act="foto-abrir" data-arg="conferencia|||chat" aria-label="Enviar foto">${ic('camera')}</button><button type="button" class="iconbtn" data-act="sheet" data-arg="fala" aria-label="Falar (simulado)">${ic('mic')}</button><label class="vis" for="chat-in">Sua mensagem</label><input id="chat-in" autocomplete="off" enterkeyhint="send" placeholder="Escreva do seu jeito"><button class="iconbtn fill" type="submit" aria-label="Enviar">${ic('enviar')}</button></form>`;
+}
+function renderAjustes(){
+  const P=state.prefs,b=backend();
+  const iaCampos=IA.tipo==='claude'?`<p class="nota">Dentro do claude.ai, a análise usa o Claude da sua própria conta. Na primeira foto, o claude.ai pede sua permissão.</p>`:
+    `<form id="form-ia" class="stackb">
+      <label class="campo" for="ia-proxy">Endereço do servidor de análise (recomendado)<input id="ia-proxy" inputmode="url" autocomplete="off" placeholder="https://elo-ia.seu-usuario.workers.dev" value="${esc(state.ia.proxy)}"></label>
+      <details><summary>Usar chave de API direto no aparelho (só para testes)</summary><div class="stackb" style="margin-top:6px">
+        <p class="nota">A chave fica salva neste aparelho e qualquer pessoa com acesso a ele pode vê-la. Use uma chave de teste com limite de gasto.</p>
+        <label class="campo" for="ia-chave">Chave da API da Anthropic<input id="ia-chave" type="password" autocomplete="off" value="${esc(state.ia.chave)}"></label>
+        <label class="campo" for="ia-modelo">Modelo<input id="ia-modelo" autocomplete="off" value="${esc(state.ia.modelo)}"></label></div></details>
+      <div class="row"><button class="btn pri grow" type="submit">Salvar</button><button class="btn grow" type="button" data-act="ia-limpar">Desligar IA</button></div></form>`;
+  return `<div class="sec">Aparência</div>
+    <div class="list">
+      <div class="li col"><span class="lbl">Tema</span><div class="seg" role="group" aria-label="Tema"><button aria-pressed="${P.tema!=='escuro'}" data-act="tema" data-arg="claro">Claro</button><button aria-pressed="${P.tema==='escuro'}" data-act="tema" data-arg="escuro">Escuro</button></div></div>
+      <div class="li"><span class="lbl" id="lb-hc2">Contraste alto<span class="hint">Bordas e textos mais marcados</span></span><button class="switch" role="switch" aria-checked="${!!P.contraste}" aria-labelledby="lb-hc2" data-act="contraste-alternar"></button></div>
+      <div class="li col"><span class="lbl">Tamanho da letra</span>${blocoEscala()}</div>
+    </div>
+    <div class="sec">Voz e leitura</div>
+    <div class="list">
+      <div class="li col"><span class="lbl">Como prefere usar<span class="hint">Mesmo em “Ouvir”, o texto continua na tela.</span></span><div class="seg" role="group" aria-label="Modo">${[['ler','Ler'],['ouvir','Ouvir'],['ambos','Os dois']].map(([k,r])=>`<button aria-pressed="${P.modo===k}" data-act="modo" data-arg="${k}">${r}</button>`).join('')}</div></div>
+      <div class="li"><span class="lbl" id="lb-nar">Narrar cada tela<span class="hint">Leio a explicação da tela quando você muda de aba</span></span><button class="switch" role="switch" aria-checked="${!!P.narrar}" aria-labelledby="lb-nar" data-act="narrar-alternar"></button></div>
+      <div class="li col">${blocoVoz()}</div>
+    </div>
+    <div class="sec">Análise de fotos</div>
+    <div class="list"><div class="li col"><div class="ia-status"><i class="${b!=='demo'?'on':''}"></i><span class="lbl">${FONTE[b]}</span></div>
+      <p class="nota">A IA lê o que aparece na foto; quem decide se confere é a regra do ELO, comparando com o plano do farmacêutico. A foto nunca prova que o remédio foi tomado.</p>${iaCampos}</div></div>
+    <p class="nota">Você também pode mudar pela conversa: “letra maior”, “fala mais devagar”, “só a tela”. Nenhuma opção pergunta sobre saúde ou deficiência.</p>
+    <div class="sec">Demonstração</div>
+    <div class="list">
+      <button class="li" data-act="rever-acolhe"><span class="lbl">Rever boas-vindas</span></button>
+      <button class="li" data-act="sheet" data-arg="perfil"><span class="lbl">Trocar perfil<span class="hint">Pessoa usuária, farmacêutico ou pesquisa</span></span></button>
+      ${ui.resetPerg?`<div class="li col"><span class="lbl">Apagar tudo e voltar ao início?</span><div class="row"><button class="btn pri grow" data-act="reset-sim">Sim, reiniciar</button><button class="btn grow" data-act="reset-nao">Cancelar</button></div></div>`:'<button class="li" data-act="reset"><span class="lbl">Reiniciar dados fictícios<span class="hint">Apaga eventos, conversa e preferências deste aparelho</span></span></button>'}
+    </div>`;
+}
+
+/* =================== Conversa: respostas =================== */
+function enviarChat(texto,origem){
+  texto=String(texto||'').trim();if(!texto)return;
+  state.chat.push({de:'voce',texto,origem});
+  responder(interpretar(texto,planoAtual()),origem,texto);
+}
+function responder(r,origem,texto){
+  const p=planoAtual(),m={de:'elo',texto:'',acoes:[]},enc={rot:'Mandar para o farmacêutico',tipo:'enc'};
+  switch(r.decisao){
+    case 'PREFERENCIA':aplicarPref(r.pref);m.texto=r.msg;break;
+    case 'BLOQUEIA_ENCAMINHA':logEvento({tipo:'bloqueio',origem,estado:'bloqueado',detalhe:`“${texto}”`});m.texto=r.msg;m.acoes=[enc,{rot:'Agora não',tipo:'cancelar'}];break;
+    case 'REPETE':{const ult=state.chat.slice(0,-1).reverse().find(x=>x.de==='elo');m.texto=ult?ult.texto:MSG.inicio;if(ult&&ult.acoes&&!ult.feito){m.acoes=ult.acoes;ult.feito=true;}break;}
+    case 'ENCAMINHAR':m.texto='Posso preparar um resumo curto para o seu farmacêutico. Você confere tudo antes de enviar.';m.acoes=[{rot:'Ver o resumo',tipo:'enc'}];break;
+    case 'DUVIDA':(r.itens.length?r.itens:[null]).forEach(id=>{const s=id?slotParaItem(id):null;logEvento({tipo:'duvida',itemId:id,slot:s?s.key:null,origem,estado:'duvida',detalhe:`“${texto}”`});});
+      m.texto=MSG.duvida+' Não vou orientar dose extra. Se quiser, mando sua dúvida para o seu farmacêutico.';m.acoes=[enc];break;
+    case 'ESCLARECER':m.texto=r.msg+' Se preferir, mande uma foto da caixa.';m.acoes=r.opcoes.map(id=>({rot:nomeComp(item(id)),tipo:'escolher',item:id})).concat([{rot:'Mandar foto da caixa',tipo:'foto',modo:'conferencia'},{rot:'Nenhum desses',tipo:'cancelar'}]);break;
+    case 'DIVERGENTE':logEvento({tipo:'relato',itemId:r.itens[0]||null,origem,estado:'divergente',detalhe:`“${texto}”`});m.texto=r.msg+' Se quiser, mande uma foto da caixa para eu conferir.';m.acoes=[{rot:'Mandar foto da caixa',tipo:'foto',modo:'conferencia'},enc,{rot:'Tudo bem',tipo:'cancelar'}];break;
+    case 'PEDE_CONFIRMACAO':m.texto=`Confirma que você tomou agora: ${r.itens.map(id=>nomeComp(item(id))).join(' e ')}?${r.itens.length===1?' Se quiser, mande junto uma foto da cartela.':''}`;
+      m.acoes=[{rot:'Sim, tomei',tipo:'confirmar',itens:r.itens}].concat(r.itens.length===1?[{rot:'Mandar foto da cartela',tipo:'foto',modo:'comprovacao',item:r.itens[0]}]:[]).concat([{rot:'Não',tipo:'cancelar'}]);break;
+    case 'LISTA':m.texto='Hoje você tem: '+slotsHoje().map(s=>`${s.hora}, ${nomeComp(s.item)}`).join('; ')+'.';break;
+    case 'ORIENTA':{const it=item(r.itens[0]);m.texto=`${it.orientacao} (Fonte: tratamento versão ${p.versao}, conferido por ${p.validadoPor}.)`;break;}
+    default:m.texto=MSG.naoEntendi;
+  }
+  state.chat.push(m);state.chat=state.chat.slice(-60);salvar();render();falar(m.texto);
+}
+function acaoChat(arg){
+  const [i,j]=arg.split(':').map(Number),msg=state.chat[i];if(!msg||msg.feito)return;
+  const a=msg.acoes[j];
+  if(a.tipo==='foto'){const it=a.item;const s=it?slotParaItem(it):null;abrirFoto({modo:a.modo,item:it||null,slot:s?s.key:null,destino:'chat'});return;}
+  msg.feito=true;state.chat.push({de:'voce',texto:a.rot,origem:'toque'});
+  if(a.tipo==='confirmar'){a.itens.forEach(id=>{const s=slotParaItem(id);if(s)registrarTomada(s.key,'toque',a.evidencia?'Confirmação explícita na conversa, com foto analisada. Não comprova ingestão.':'Confirmação explícita na conversa. Não comprova ingestão.',a.evidencia||null);});
+    const t=`Pronto. Registrei que você confirmou: ${a.itens.map(id=>nomeComp(item(id))).join(' e ')}${a.evidencia?', com a foto anexada para o farmacêutico':''}.`;state.chat.push({de:'elo',texto:t});salvar();render();falar(t);}
+  else if(a.tipo==='escolher')responder({decisao:'PEDE_CONFIRMACAO',itens:[a.item]},'toque',a.rot);
+  else if(a.tipo==='enc'){const t='Abri o resumo para você conferir antes de enviar.';state.chat.push({de:'elo',texto:t});salvar();ui.sheet={tipo:'enc'};render();falar(t);}
+  else{const t='Tudo bem. Não registrei nada.';state.chat.push({de:'elo',texto:t});salvar();render();falar(t);}
+}
+function conferirUI(leitura,origem){
+  const r=conferir(leitura,planoAtual());
+  logEvento({tipo:'conferencia',itemId:r.itemId||null,origem,estado:{CONFIRMA:'correspondente',DIVERGENTE:'divergente',INCONCLUSIVO:'inconclusivo'}[r.decisao],detalhe:r.motivo});
+  ui.conferencia=r;abrirSheet('resultado');
+  falar(r.decisao==='CONFIRMA'?'Confere com o seu tratamento: '+nomeComp(item(r.itemId))+'.':r.decisao==='DIVERGENTE'?MSG.divergImagem:MSG.falhaImagem);
+}
+
+/* =================== Farmacêutico =================== */
+function fotoEv(e){if(!e.foto)return '';return `<div class="row" style="flex-wrap:nowrap;align-items:flex-start">${e.foto.thumb?`<img class="thumb-sm" src="${e.foto.thumb}" alt="Foto enviada pela pessoa">`:`<div style="width:96px;flex:none">${fotoHTML(e.foto)}</div>`}<p class="meta" style="flex:1;min-width:0">${esc(FONTE[(e.analise||{}).fonte]||'')}${e.analise&&e.analise.ia&&e.analise.ia.observacao?' · “'+esc(e.analise.ia.observacao)+'”':''}</p></div>`;}
+function renderFila(){
+  const abertas=state.eventos.filter(e=>['duvida','divergente','bloqueado'].includes(e.estado)&&!e.revisado);
+  const encs=state.encaminhamentos.filter(e=>e.estado!=='respondido');
+  const fila=[...encs.map(e=>({k:'enc',ts:e.ts,e})),...abertas.map(e=>({k:'ev',ts:e.ts,e}))].sort((a,b)=>b.ts.localeCompare(a.ts));
+  return `<div class="row"><span class="chip ${abertas.length?'warn':'ok'}">${abertas.length} intercorrência${abertas.length===1?'':'s'}</span><span class="chip ${encs.length?'acc':''}">${encs.length} encaminhamento${encs.length===1?'':'s'}</span></div>
+    ${fila.length?fila.map(x=>x.k==='enc'?filaEnc(x.e):filaEv(x.e)).join(''):`<div class="vazio">${ic('check',32)}<p style="margin-top:8px">Nada pendente agora.</p></div>`}`;
+}
+function filaEv(e){const it=e.itemId?item(e.itemId):null;return `<article class="card"><div class="row sb"><span class="chip ${ESTADO_CHIP[e.estado]}">${ESTADO[e.estado]}</span><span class="meta num">${fDataHora(e.ts)}</span></div>
+  <div><strong>${TIPO[e.tipo]}</strong>${it?' · '+esc(nomeComp(it)):''}</div>${fotoEv(e)}<p class="meta">${ORIGEM[e.origem]||''} · ${esc(e.detalhe||'')}</p>
+  <button class="btn sm" style="justify-self:start" data-act="ev-revisar" data-arg="${e.id}">Marcar como revisado</button></article>`;}
+function filaEnc(e){return `<article class="card"><div class="row sb"><span class="chip acc">Encaminhamento · ${e.estado==='em_analise'?'em análise':'novo'}</span><span class="meta num">${fDataHora(e.ts)}</span></div>
+  ${e.resumo.length?`<ul class="lista meta">${e.resumo.map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`:'<p class="meta">Sem eventos anexados.</p>'}
+  ${e.mensagem?`<p>“${esc(e.mensagem)}”</p>`:''}
+  <div class="row">${e.estado==='enviado'?`<button class="btn sm" data-act="enc-analise" data-arg="${e.id}">Iniciar análise</button>`:''}<button class="btn sm pri" data-act="sheet" data-arg="responder:${e.id}">Registrar retorno</button></div></article>`;}
+function renderPlano(){
+  const p=planoAtual();
+  if(ui.draft)return renderDraft();
+  return `<div class="card"><div class="sec" style="margin:0">Uso oral · plano farmacoterapêutico</div>
+      <p class="meta">${esc(p.origem)}</p><p class="meta">Validado por ${esc(p.validadoPor)} · vigência ${fData(p.vigencia.inicio)} a ${fData(p.vigencia.fim)}</p>
+      <ul class="rxlist">${p.itens.map(it=>`<li><div class="rx"><span class="nm">${esc(it.nome)}</span><span class="lead"></span><span class="cc">${esc(concTxt(it))}</span></div>
+        <div class="meta">${esc(it.forma)} · ${esc(it.posologia)} · <span class="num">${it.horarios.join(', ')}</span></div>
+        <div class="meta">Termos da pessoa: ${esc(it.apelidos.join(', ')||'nenhum')}</div>
+        <div class="meta">Orientação validada: ${esc(it.orientacao)}</div></li>`).join('')}</ul></div>
+    <button class="btn pri block" data-act="plano-editar">Editar e publicar nova versão</button>
+    <div class="sec">Histórico de versões</div>
+    <div class="list">${state.planos.slice().reverse().map(v=>`<div class="li"><span><span class="lbl">Versão ${v.versao}</span><span class="hint">${esc(v.motivo||'')}</span></span><span class="num meta">${fData(v.publicadoEm)}</span></div>`).join('')}</div>`;
+}
+function renderDraft(){
+  const d=ui.draft,U=['mg','g','mcg','mg/mL'];
+  return `<form id="draft-form" class="draft" novalidate>${d.itens.map((it,i)=>`<fieldset class="dfs"><legend>Medicamento ${i+1}</legend>
+    <label for="d-${i}-nome">Nome (princípio ativo)<input id="d-${i}-nome" value="${esc(it.nome)}"></label>
+    <label for="d-${i}-cv">Concentração<span class="dconc"><input id="d-${i}-cv" type="number" inputmode="decimal" min="0" step="any" value="${esc(it.conc.valor||'')}"><select id="d-${i}-cu" aria-label="Unidade">${U.map(u=>`<option${u===it.conc.unidade?' selected':''}>${u}</option>`).join('')}</select></span></label>
+    <label for="d-${i}-forma">Forma farmacêutica<input id="d-${i}-forma" value="${esc(it.forma)}"></label>
+    <label for="d-${i}-pos">Posologia exatamente como prescrita<input id="d-${i}-pos" value="${esc(it.posologia)}"></label>
+    <label for="d-${i}-hor">Horários (HH:MM, separados por vírgula)<input id="d-${i}-hor" inputmode="numeric" value="${esc(it.horarios.join(', '))}"></label>
+    <label for="d-${i}-ap">Termos que a pessoa usa<input id="d-${i}-ap" value="${esc(it.apelidos.join(', '))}"></label>
+    <label for="d-${i}-ori">Orientação validada (aparece para a pessoa)<textarea id="d-${i}-ori" rows="2">${esc(it.orientacao)}</textarea></label>
+    <button type="button" class="btn sm ghost" style="justify-self:start" data-act="draft-del" data-arg="${i}">Remover este medicamento</button></fieldset>`).join('')}
+    <button type="button" class="btn" data-act="draft-add">Adicionar medicamento</button>
+    <label for="d-motivo">Motivo da alteração<input id="d-motivo" value="${esc(d.motivo)}" placeholder="Ex.: nova receita conferida em ${new Date().toLocaleDateString('pt-BR')}"></label>
+    <div id="d-erros" class="erros" role="alert">${esc(d.erro||'')}</div>
+    <div class="stackb"><button class="btn pri block" type="submit">Publicar versão ${planoAtual().versao+1}</button><button type="button" class="btn block" data-act="draft-descartar">Descartar alterações</button></div></form>`;
+}
+const val=id=>{const el=document.getElementById(id);return el?el.value.trim():'';};
+function syncDraft(){if(!ui.draft||!$('#draft-form'))return;ui.draft.itens=ui.draft.itens.map((it,i)=>({...it,nome:val(`d-${i}-nome`),conc:{valor:Number(val(`d-${i}-cv`))||0,unidade:val(`d-${i}-cu`)||'mg'},forma:val(`d-${i}-forma`),posologia:val(`d-${i}-pos`),horarios:val(`d-${i}-hor`).split(',').map(s=>s.trim()).filter(Boolean),apelidos:val(`d-${i}-ap`).split(',').map(s=>s.trim()).filter(Boolean),orientacao:val(`d-${i}-ori`)}));ui.draft.motivo=val('d-motivo');}
+function publicarDraft(){
+  syncDraft();const d=ui.draft,err=[];
+  if(!d.itens.length)err.push('Inclua ao menos um medicamento.');
+  d.itens.forEach((it,i)=>{const n=`Medicamento ${i+1}`;if(!it.nome)err.push(`${n}: informe o nome.`);if(!(it.conc.valor>0))err.push(`${n}: informe a concentração.`);if(!it.forma)err.push(`${n}: informe a forma.`);if(!it.posologia)err.push(`${n}: informe a posologia como prescrita.`);if(!it.horarios.length||it.horarios.some(h=>!/^([01]\d|2[0-3]):[0-5]\d$/.test(h)))err.push(`${n}: use horários no formato HH:MM.`);});
+  if(!d.motivo)err.push('Informe o motivo da alteração.');
+  if(err.length){d.erro=err.join(' ');render();const e=$('#d-erros');e&&e.scrollIntoView({block:'center'});return;}
+  const p=planoAtual(),novo={...clonar(p),versao:p.versao+1,publicadoEm:agora(),motivo:d.motivo,itens:d.itens.map((it,i)=>({...it,id:it.id||('i'+Date.now().toString(36)+i)}))};
+  state.planos.push(novo);ui.draft=null;
+  logEvento({tipo:'prescricao',origem:'farmaceutico',estado:'registrado',detalhe:`Versão ${novo.versao}: ${novo.motivo}`});
+  salvar();render();aviso(`Versão ${novo.versao} publicada.`);
+}
+function renderRetiradas(){
+  const p=planoAtual();
+  return p.itens.map(it=>{const d=state.dispensacoes.filter(x=>x.itemId===it.id).pop();
+    return `<article class="card"><div class="rx"><span class="nm">${esc(it.nome)}</span><span class="lead"></span><span class="cc">${esc(concTxt(it))}</span></div>
+      <div class="row sb"><span class="meta">Última retirada</span><span class="num">${d?fData(d.data):'—'}</span></div>
+      ${d?`<p class="meta">${esc(d.qtd)} · ${esc(d.por)}</p>`:''}
+      <button class="btn sm" style="justify-self:start" data-act="disp-reg" data-arg="${it.id}">Registrar retirada hoje</button></article>`;}).join('');
+}
+function renderTrilha(){
+  const f=ui.trilhaFiltro;let evs=state.eventos.slice().reverse();
+  if(f==='atencao')evs=evs.filter(e=>['duvida','divergente','bloqueado','inconclusivo'].includes(e.estado));
+  if(f==='fotos')evs=evs.filter(e=>e.foto);
+  return `<div class="seg" role="group" aria-label="Filtro"><button aria-pressed="${f==='atencao'}" data-act="trilha-filtro" data-arg="atencao">Atenção</button><button aria-pressed="${f==='fotos'}" data-act="trilha-filtro" data-arg="fotos">Fotos</button><button aria-pressed="${f==='todos'}" data-act="trilha-filtro" data-arg="todos">Todos</button></div>
+    ${evs.length?evs.slice(0,60).map(e=>{const it=e.itemId?(item(e.itemId)||item(e.itemId,state.planos.find(v=>v.versao===e.versaoPlano)||planoAtual())):null;
+      return `<article class="card" style="gap:6px"><div class="row sb"><strong>${TIPO[e.tipo]||esc(e.tipo)}</strong><span class="meta num">${fDataHora(e.ts)}</span></div>
+        ${it?`<div>${esc(nomeComp(it))}</div>`:''}${fotoEv(e)}
+        <div class="row"><span class="chip ${ESTADO_CHIP[e.estado]||''}">${ESTADO[e.estado]||esc(e.estado)}</span><span class="chip">${ORIGEM[e.origem]||esc(e.origem)}</span><span class="chip">Plano v${e.versaoPlano}</span>${e.evidencia?'<span class="chip acc">Com foto</span>':''}${e.revisado?'<span class="chip">Revisado</span>':''}</div>
+        ${e.detalhe?`<p class="meta">${esc(e.detalhe)}</p>`:''}</article>`;}).join(''):'<div class="vazio">Nenhum evento neste filtro.</div>'}`;
+}
+
+/* =================== Pesquisa =================== */
+function executar(){ui.res=CASOS.map(c=>({caso:c,A:rodar('A',c),B:rodar('B',c),C:rodar('C',c)}));ui.resEm=new Date();}
+const M=()=>({A:metricas(ui.res,'A'),B:metricas(ui.res,'B'),C:metricas(ui.res,'C')});
+function renderResumo(){
+  const m=M();
+  const linhas=[
+    ['Falsas confirmações de medicamento ou concentração','menor é melhor',k=>m[k].falsa,40],
+    ['Tomadas registradas sem confirmação explícita','menor é melhor',k=>m[k].semConf,40],
+    ['Divergências conhecidas detectadas','maior é melhor',k=>m[k].sens,m.C.nDiv],
+    ['Eventos com origem, versão do plano e estado','maior é melhor',k=>m[k].rast,40],
+    ['Transições seguras em incerteza (F, I, R05, R06)','maior é melhor',k=>m[k].inc,m.C.nInc],
+    ['Concordância geral com o gabarito','maior é melhor',k=>m[k].conc,40]
+  ];
+  return `<div class="aviso" role="note"><strong>Como ler estes números</strong><span>São saídas determinísticas deste demonstrador sobre cenários e gabaritos definidos nele. A e B são modelos simplificados escritos para comparação. Servem para conferir se as regras funcionam como especificado; não são resultado do estudo nem indicam efeito clínico.</span></div>
+    <div class="card" style="gap:6px"><div class="row sb"><span class="meta">Base congelada · assinatura</span><span class="num">${assinatura()}</span></div><div class="row sb"><span class="meta">Última execução</span><span class="num">${ui.resEm.toLocaleTimeString('pt-BR')}</span></div>
+      <div class="row" style="margin-top:6px"><button class="btn pri grow" data-act="executar">Executar de novo</button><button class="btn grow" data-act="copiar-csv">Copiar CSV</button></div></div>
+    ${ui.csv?`<label class="sec" for="csv">CSV para copiar</label><textarea id="csv" class="copiado" readonly>${esc(ui.csv)}</textarea>`:''}
+    <div class="card" style="gap:4px"><p class="meta"><span class="mk">A</span> autocadastro textual sem validação cruzada</p><p class="meta"><span class="mk">B</span> voz + foto sem referência clínica</p><p class="meta"><span class="mk" style="color:var(--accent)">C</span> ELO completo simulado</p></div>
+    ${linhas.map(([n,s,f,t])=>`<article class="card"><div><strong>${n}</strong><span class="sense">${s}</span></div>${['A','B','C'].map(k=>{const v=f(k);return `<div class="mrow ${k==='C'?'c':''}"><span class="mk">${k}</span><i class="track"><b style="width:${t?Math.round(v/t*100):0}%"></b></i><span class="num">${v}/${t}</span></div>`;}).join('')}</article>`).join('')}
+    <div class="sec">Concordância por grupo</div>
+    <div class="card"><div class="tbl"><table><thead><tr><th>Grupo</th><th>A</th><th>B</th><th>C</th></tr></thead><tbody>
+      ${Object.keys(GRUPOS).map(g=>`<tr><td>${GRUPO_CURTO[g]}</td>${['A','B','C'].map(k=>`<td class="num">${m[k].porGrupo[g]||0}/8</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+}
+function renderCasos(){
+  const filt=ui.bancFiltro==='todos'?ui.res:ui.res.filter(r=>r.caso.id[0]===ui.bancFiltro);
+  return `<div class="filtros" role="group" aria-label="Grupo">${[['todos','Todos'],...Object.entries(GRUPO_CURTO)].map(([k,r])=>`<button class="btn sm" aria-pressed="${ui.bancFiltro===k}" data-act="banc-filtro" data-arg="${k}">${k==='todos'?r:k+' · '+r}</button>`).join('')}</div>
+    ${filt.map(r=>{const c=r.caso;return `<article class="card"><div class="row sb"><span class="num"><strong>${c.id}</strong></span><span class="chip">${GRUPO_CURTO[c.id[0]]}</span></div>
+      <p>${c.texto?`“${esc(c.texto)}”`:esc(c.desc)}</p>${c.texto?`<p class="meta">${esc(c.desc)}</p>`:''}
+      <p class="meta">Gabarito: <strong style="color:var(--ink)">${DEC[c.esperado]}</strong></p>
+      <div class="stackb" style="gap:6px">${['A','B','C'].map(k=>{const o=r[k].out,ok=o===c.esperado;return `<div class="resrow"><span class="mk"${k==='C'?' style="color:var(--accent)"':''}>${k}</span><span class="res ${ok?'ok':'no'}">${ok?'✓':'✗'} ${DEC[o]}</span></div>`;}).join('')}</div></article>`;}).join('')}`;
+}
+function renderMatriz(){
+  const res=ui.res,cond=ui.bancCond,cats=Object.keys(DEC);
+  const usados=cats.filter(c=>res.some(r=>r.caso.esperado===c||r[cond].out===c));
+  const linhas=usados.filter(e=>res.some(r=>r.caso.esperado===e));
+  const mat=`<table class="mat"><thead><tr><th>Gab. ↓ / obtido →</th>${usados.map(c=>`<th title="${DEC[c]}">${DEC_CURTO[c]}</th>`).join('')}</tr></thead><tbody>${linhas.map(e=>`<tr><td>${DEC_CURTO[e]}</td>${usados.map(o=>{const n=res.filter(r=>r.caso.esperado===e&&r[cond].out===o).length;return `<td class="num ${n===0?'z':e===o?'diag':'off'}">${n}</td>`;}).join('')}</tr>`).join('')}</tbody></table>`;
+  const crit=[
+    ['Não reproduzir áudio automaticamente sem alternativa visível','Pessoa surpreendida por som, sem controle','Voz só após toque; botão “Parar voz”; modo “Ler”; narração desligável',[],`CONFIG.autoplay = ${CONFIG.autoplay}`],
+    ['Alterar apresentação sem perguntas sobre deficiência','Coleta de dado sensível e estigma','Ajustes por preferência: tema, letra, contraste, voz',[],'Inspeção das boas-vindas e dos ajustes'],
+    ['Não tratar concentração duvidosa como confirmada','Falsa segurança sobre a dose da caixa','Limiar de leitura 0,85 por campo, também nas leituras da IA',['I02','I03','I05'],null],
+    ['Não confundir dispensação com tomada','Registro de uso inexistente','Eventos distintos; retirada não altera tomada',['R02'],null],
+    ['Nunca marcar dose tomada sem confirmação explícita','Falso registro de tomada','Confirmação “Sim, tomei” obrigatória, com ou sem foto',['R03','R04','F05','F06'],null],
+    ['Nunca recomendar alteração, duplicação ou compensação de dose','Orientação clínica indevida','Regra de bloqueio com encaminhamento; IA proibida de orientar dose',['R06'],null],
+    ['Explicitar origem e versão da prescrição','Uso de plano desatualizado','Todo evento carrega versão; comparação com plano vigente',['R08'],null],
+    ['Interromper a voz, repetir e usar entrada alternativa','Dependência de um único canal','“Parar voz”, comando “repete”, toque, texto e foto',['R07'],null],
+    ['Não publicar CPF, prescrições reais ou dados sensíveis','Exposição de dados de saúde','Sem campo de CPF; aviso antes de enviar foto; foto fica no aparelho',[],'Inspeção dos dados do demonstrador'],
+    ['Revisão farmacêutica como encaminhamento, não atendimento real','Expectativa de atendimento clínico','Vínculo simulado e rotulado',[],'Inspeção das telas de encaminhamento']
+  ];
+  return `<div class="sec">Matriz de confusão</div>
+    <div class="seg" role="group" aria-label="Condição">${['A','B','C'].map(k=>`<button aria-pressed="${cond===k}" data-act="banc-cond" data-arg="${k}">Condição ${k}</button>`).join('')}</div>
+    <div class="card"><div class="tbl">${mat}</div><div class="legenda">${usados.map(c=>`<span><strong>${DEC_CURTO[c]}</strong> ${DEC[c]}</span>`).join('')}</div></div>
+    <div class="sec">Rastreabilidade dos critérios mínimos</div>
+    ${crit.map(([c,r,im,ids,insp],i)=>{let ev;if(ids.length){const f=ids.filter(id=>{const x=res.find(y=>y.caso.id===id);return x.C.out!==x.caso.esperado;});ev=f.length?`<span class="res no">✗ falhou em ${f.join(', ')}</span>`:`<span class="res ok">✓ ${ids.length} caso${ids.length>1?'s':''} conforme</span>`;}else ev=`<span class="chip">${esc(insp)}</span>`;
+      return `<article class="card" style="gap:6px"><strong><span class="num">${i+1}.</span> ${c}</strong><p class="meta">Risco: ${r}</p><p class="meta">Implementação: ${im}</p>${ids.length?`<p class="meta">Casos: <span class="num">${ids.join(', ')}</span></p>`:''}<div>${ev}</div></article>`;}).join('')}`;
+}
+function renderSobre(){
+  return `<div class="card"><h3>Funciona de verdade</h3><ul class="lista">
+      <li>Regras de conferência de embalagem e de interpretação de linguagem cotidiana, com bloqueio de mudança de dose.</li>
+      <li>Registro de tomada com foto: a IA lê a foto e as regras do ELO comparam com o plano. A confirmação continua sendo da pessoa.</li>
+      <li>O ELO explica cada tela, por texto e, se a pessoa quiser, por voz.</li>
+      <li>Plano versionado, editável pelo farmacêutico, com dispensação registrada à parte.</li>
+      <li>Trilha de eventos com origem, versão do plano e estado; fila de intercorrências e encaminhamentos.</li>
+      <li>Tema claro ou escuro, letra até 200%, contraste alto e modo ler/ouvir.</li>
+      <li>Bancada que executa os 40 cenários nas condições A, B e C.</li></ul></div>
+    <div class="card"><h3>Depende de configuração</h3><ul class="lista">
+      <li>Análise de fotos por IA: no claude.ai usa o Claude da conta de quem abre; no GitHub Pages precisa do servidor de análise ou de uma chave de teste.</li>
+      <li>Sem IA ligada, fotos reais ficam como inconclusivas e os exemplos simulados continuam funcionando.</li></ul></div>
+    <div class="card"><h3>Simulado nesta fase</h3><ul class="lista">
+      <li>Exemplos de embalagens e cartelas: leitura e confiança já definidas.</li>
+      <li>Reconhecimento de fala: entrada por texto ou por transcrições de exemplo.</li>
+      <li>Login, encaminhamento e retorno do farmacêutico: ficam só neste aparelho.</li></ul></div>
+    <div class="card"><h3>Limites da foto</h3><p class="sub">A foto da cartela é um indício visual. Ela não prova que o remédio foi engolido, nem a composição do comprimido. Por isso o registro continua sendo a confirmação da pessoa, e fotos que não conferem vão para a fila do farmacêutico.</p></div>
+    <div class="card"><h3>Hipóteses e onde observar</h3><ul class="lista">
+      <li><strong>H1</strong> · menos falsas confirmações: Resumo, primeiro desfecho.</li>
+      <li><strong>H2</strong> · transições seguras para incerteza: grupos F e I; telas de foto e conferência.</li>
+      <li><strong>H3</strong> · apresentação configurável sem dados de deficiência: Ajustes e boas-vindas.</li></ul></div>
+    <div class="card"><h3>Critérios WCAG 2.2 considerados</h3><ul class="lista">
+      <li>1.4.2 Controle de áudio · 1.4.3 Contraste mínimo · 1.4.4 Redimensionar texto · 1.4.10 Refluxo</li>
+      <li>2.4.7 Foco visível · 2.5.8 Tamanho do alvo (toques a partir de 44 px) · 3.3.2 Rótulos · 4.1.3 Mensagens de status</li>
+      <li>Conformidade ainda não auditada com avaliadores.</li></ul></div>
+    <div class="card"><details><summary>Regras das condições comparativas</summary><div class="stackb" style="font-size:13.5px;margin-top:6px">
+      <p><strong>A · autocadastro textual.</strong> O cadastro da pessoa é aceito como correto. “Tomei” com um nome conhecido vira tomada na hora. Eventos guardam data, origem e tipo.</p>
+      <p><strong>B · voz + foto sem referência.</strong> A foto confirma a caixa quando o nome é lido com confiança ≥ 0,85, sem comparar com plano; com duas caixas, usa a primeira. “Tomei” com um nome conhecido registra sem confirmação. Eventos sem versão de plano.</p>
+      <p><strong>C · ELO.</strong> As mesmas funções que atendem a tela da pessoa usuária: comparação campo a campo com o plano vigente, esclarecimento de apelidos ambíguos, confirmação explícita, bloqueio de dose e versão em todo evento.</p></div></details></div>`;
+}
+function csv(){const l=['id,grupo,descricao,gabarito,A,B,C'];ui.res.forEach(r=>{const c=r.caso;l.push([c.id,GRUPOS[c.id[0]],(c.texto?c.texto+' | ':'')+c.desc,c.esperado,r.A.out,r.B.out,r.C.out].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','));});return l.join('\n');}
+
+/* =================== Ações =================== */
+const ACOES={
+  tab:a=>{const {pf}=ROTA();ir(pf,a);setTimeout(narrar,60);},
+  voltar:()=>{voltar();setTimeout(narrar,60);},
+  perfil:a=>{ui.sheet=null;ir(a,ui.tab[a]);},
+  sheet:a=>{const [t,x]=String(a).split(':');abrirSheet(t,x);},
+  fechar:()=>fecharSheet(),
+  tema:a=>{aplicarPref({tema:a});render();},
+  'tema-alternar':()=>{aplicarPref({tema:state.prefs.tema==='escuro'?'claro':'escuro'});render();aviso(state.prefs.tema==='escuro'?'Tema escuro ativado.':'Tema claro ativado.');},
+  'contraste-alternar':()=>{aplicarPref({contraste:!state.prefs.contraste});render();},
+  'narrar-alternar':()=>{state.prefs.narrar=!state.prefs.narrar;salvar();render();},
+  'ob-modo':a=>{state.prefs.modo=a;ui.obStep=1;salvar();render();},
+  'ob-ir':a=>{ui.obStep=+a;render();},
+  'ob-fim':()=>{state.prefs.acolhido=true;ui.obStep=0;salvar();render();narrar();},
+  'ob-so-tela':()=>{state.prefs.modo='ler';pararVoz();state.prefs.acolhido=true;ui.obStep=0;salvar();render();},
+  escala:a=>{passoEscala(+a);render();},
+  modo:a=>{state.prefs.modo=a;if(a==='ler')pararVoz();salvar();render();aviso(a==='ler'?'Usando só a tela.':a==='ouvir'?'Respostas serão lidas em voz alta.':'Tela e voz ativadas.');},
+  'testar-voz':()=>falar('Olá. Esta é a minha voz. Você pode me interromper quando quiser.',true),
+  'parar-voz':pararVoz,
+  'rever-acolhe':()=>{state.prefs.acolhido=false;ui.obStep=0;salvar();render();},
+  ouvir:(a,b)=>falar(b.dataset.say,true),
+  tomei:a=>abrirSheet('confirmar',a),
+  'tomei-sim':a=>{registrarTomada(a,'toque');ui.sheet=null;ui.msgSlot=null;render();aviso('Registrado: você confirmou.');falar('Pronto. Registrei que você confirmou.');},
+  'tomei-com-foto':()=>{const a=ui.analise;if(!a)return;const s=slotPorKey(a.ctx.slot)||slotParaItem(a.ctx.item);if(s)registrarTomada(s.key,'toque','Confirmação explícita, com foto analisada. Não comprova ingestão.',a.out.ev.id);ui.sheet=null;ui.analise=null;render();aviso('Registrado com foto.');falar('Pronto. Registrei que você confirmou, com a foto anexada para o farmacêutico.');},
+  naolembro:a=>{const s=slotPorKey(a);logEvento({tipo:'duvida',itemId:s.item.id,slot:a,origem:'toque',estado:'duvida',detalhe:'Toque em “Não lembro”'});ui.msgSlot={key:a,txt:MSG.duvida+' Não vou orientar dose extra.'};render();falar(MSG.duvida);},
+  'resp-lida':()=>{state.encaminhamentos.forEach(e=>{if(e.resposta)e.lidaPessoa=true;});salvar();render();},
+  'enc-de-sheet':()=>abrirSheet('enc'),
+  'enc-enviar':()=>{const ev=eventosAtencaoHoje();const resumo=ev.map(e=>`${TIPO[e.tipo]}${e.itemId&&item(e.itemId)?' · '+nomeComp(item(e.itemId)):''} · ${fHora(e.ts)}`);
+    state.encaminhamentos.push({id:'n'+Date.now().toString(36),ts:agora(),resumo,mensagem:val('enc-msg'),estado:'enviado',eventos:ev.map(e=>e.id)});
+    logEvento({tipo:'encaminhamento',origem:'toque',estado:'enviado',detalhe:`Permissão explícita; ${resumo.length} evento(s) no resumo`});ui.sheet=null;salvar();render();aviso('Pedido enviado (simulação).');falar('Pronto. Seu pedido foi enviado para o farmacêutico. Nesta demonstração, ninguém real recebe.');},
+  'foto-abrir':a=>{const [modo,itemId,slot,destino]=String(a).split('|');abrirFoto({modo,item:itemId||null,slot:slot||null,destino:destino||'sheet'});},
+  camera:()=>abrirCamera(),
+  consentir:()=>{state.prefs.consentFoto=true;salvar();ui.sheet={tipo:'foto'};renderSheet();const f=$('#foto');f.value='';f.click();},
+  'foto-exemplo':a=>processarFoto({ex:a}),
+  'analise-cancelar':()=>{if(ui.analise&&ui.analise.ctl)ui.analise.ctl.abort();ui.analise=null;fecharSheet();aviso('Análise cancelada.');},
+  'ia-limpar':()=>{state.ia={proxy:'',chave:'',modelo:'claude-sonnet-5-5'};salvar();render();aviso('Análise por IA desligada.');},
+  conferir:a=>{const c=CASOS.find(x=>x.id===a);conferirUI(c.leitura,'imagem_simulada');},
+  chip:(a,b)=>enviarChat(b.dataset.txt,'texto'),
+  fala:a=>{ui.sheet=null;enviarChat(FALAS[+a],'fala_simulada');},
+  'chat-acao':a=>acaoChat(a),
+  'plano-editar':()=>{ui.draft={itens:clonar(planoAtual().itens),motivo:'',erro:''};render();},
+  'draft-add':()=>{syncDraft();ui.draft.itens.push({id:null,nome:'',conc:{valor:0,unidade:'mg'},forma:'',posologia:'',horarios:[],apelidos:[],orientacao:''});render();},
+  'draft-del':a=>{syncDraft();ui.draft.itens.splice(+a,1);render();},
+  'draft-descartar':()=>{ui.draft=null;render();},
+  'disp-reg':a=>{const it=item(a);state.dispensacoes.push({id:'d'+Date.now().toString(36),itemId:a,data:dataLocal(new Date()),qtd:'conforme receita (fictício)',por:'Farm. Ana Lima (fictício)',versaoPlano:planoAtual().versao});
+    logEvento({tipo:'dispensacao',itemId:a,origem:'farmaceutico',estado:'registrado',detalhe:'Retirada registrada; não altera registro de tomada'});render();aviso(`Retirada de ${it.nome} registrada.`);},
+  'ev-revisar':a=>{const e=state.eventos.find(x=>x.id===a);if(e){e.revisado=true;e.revisadoEm=agora();}salvar();render();},
+  'enc-analise':a=>{const e=state.encaminhamentos.find(x=>x.id===a);e.estado='em_analise';salvar();render();},
+  'trilha-filtro':a=>{ui.trilhaFiltro=a;render();},
+  executar:()=>{executar();ui.csv=null;render();aviso('Cenários executados.');},
+  'banc-cond':a=>{ui.bancCond=a;render();},
+  'banc-filtro':a=>{ui.bancFiltro=a;render();},
+  'copiar-csv':()=>{const t=csv();const fb=()=>{ui.csv=t;render();const el=$('#csv');if(el){el.focus();el.select();}aviso('Selecione e copie o texto.');};
+    try{navigator.clipboard.writeText(t).then(()=>aviso('Resultados copiados.'),fb);}catch(e){fb();}},
+  reset:()=>{ui.resetPerg=true;render();},
+  'reset-nao':()=>{ui.resetPerg=false;render();},
+  'reset-sim':()=>{state=estadoInicial();salvar();Object.assign(ui,{tab:{paciente:'hoje',farmaceutico:'fila',pesquisa:'resumo'},pilha:[],obStep:0,sheet:null,msgSlot:null,conferencia:null,analise:null,draft:null,resetPerg:false});pararVoz();aviso('Demonstração reiniciada.');ir('paciente','hoje');}
+};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const f=ACOES[b.dataset.act];if(f){e.preventDefault();f(b.dataset.arg,b,e);}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&ui.sheet)fecharSheet();});
+document.addEventListener('submit',e=>{
+  const f=e.target;e.preventDefault();
+  if(f.id==='chatform'){const i=$('#chat-in');const t=i.value;i.value='';enviarChat(t,'texto');const n=$('#chat-in');n&&n.focus({preventScroll:true});}
+  else if(f.id==='form-digitar'){const l={nome:val('dg-nome'),conc:val('dg-conc'),forma:val('dg-forma')};if(!l.nome){aviso('Escreva pelo menos o nome.');return;}l.conf={nome:l.nome?1:0,conc:l.conc?1:0,forma:l.forma?1:0};conferirUI(l,'texto');}
+  else if(f.id==='draft-form')publicarDraft();
+  else if(f.id==='form-ia'){state.ia={proxy:val('ia-proxy'),chave:val('ia-chave'),modelo:val('ia-modelo')||'claude-sonnet-5-5'};if(state.ia.proxy&&!/^https:\/\//.test(state.ia.proxy)){aviso('O endereço precisa começar com https://');return;}salvar();render();aviso(backend()==='demo'?'Análise por IA desligada.':'Configuração salva.');}
+  else if(f.id==='form-resp'){const id=f.dataset.enc,t=val('resp-txt');if(!t){aviso('Escreva o retorno antes de enviar.');return;}const en=state.encaminhamentos.find(x=>x.id===id);en.resposta=t;en.estado='respondido';en.respondidoEm=agora();
+    (en.eventos||[]).forEach(eid=>{const ev=state.eventos.find(x=>x.id===eid);if(ev){ev.revisado=true;ev.revisadoEm=agora();}});ui.sheet=null;salvar();render();aviso('Retorno registrado (simulação).');}
+});
+document.addEventListener('input',e=>{if(e.target.dataset&&e.target.dataset.input==='vel'){state.prefs.vel=Number(e.target.value);salvar();const s=$('#vel-val');if(s)s.textContent=state.prefs.vel.toFixed(1)+'×';}});
+document.addEventListener('change',async e=>{
+  if(e.target.id==='foto'&&e.target.files&&e.target.files[0]){
+    const file=e.target.files[0];
+    try{const foto=await prepararImagem(file);processarFoto(foto);}
+    catch(err){aviso('Não consegui abrir essa imagem. Tente uma foto em JPG ou PNG.');}
+  }
+});
+window.addEventListener('hashchange',aoMudarRota);
+if(temVoz){try{window.speechSynthesis.getVoices();}catch(e){}}
+if('serviceWorker' in navigator&&location.protocol==='https:'&&!window.claude&&document.querySelector('link[rel="manifest"]')){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+render();
+iniciarIA();
+</script>
+</body>
+</html>

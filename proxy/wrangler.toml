@@ -1,0 +1,8 @@
+name = "elo-ia"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Troque pelo endereço do seu GitHub Pages (sem barra no final).
+ALLOWED_ORIGINS = "https://SEU-USUARIO.github.io"
+MODELO = "claude-sonnet-5-5"
